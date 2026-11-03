@@ -201,7 +201,8 @@ def planted(n: Int, m: Int, r: Random): (Seq[Seq[(Int, Int)]], Array[Int]) =
   (cl, sigma)
 println()
 println(
-  f"${"planted 3-SAT"}%-22s ${"models"}%6s ${"full search"}%11s | the dive: found in turns (− = conflict) by guess noise p"
+  f"${"planted 3-SAT"}%-22s ${"models"}%6s ${"full search"}%11s | " +
+    "the dive: found in turns (− = conflict) by guess noise p"
 )
 println(f"${""}%-22s ${""}%6s ${"nodes"}%11s | ${"p=0"}%5s ${"p=0.1"}%6s ${"p=0.2"}%6s ${"p=0.3"}%6s ${"p=0.5"}%6s")
 val dives = scala.collection.mutable.Map.empty[Double, (Int, Int)].withDefaultValue((0, 0))
@@ -221,7 +222,8 @@ for seed <- 1 to 6 do
     if found == 1 then s"$turns" else "−"
   }
   println(
-    f"${s"#$seed: n=20 m=85"}%-22s $ref%6d $nodes%11d | ${cells(0)}%5s ${cells(1)}%6s ${cells(2)}%6s ${cells(3)}%6s ${cells(4)}%6s"
+    f"${s"#$seed: n=20 m=85"}%-22s $ref%6d $nodes%11d | " +
+      f"${cells(0)}%5s ${cells(1)}%6s ${cells(2)}%6s ${cells(3)}%6s ${cells(4)}%6s"
   )
 println(
   "found by the dive: " + Seq(0.0, 0.1, 0.2, 0.3, 0.5).map(p => s"p=$p ${dives(p)._1}/${dives(p)._2}").mkString(", ")
