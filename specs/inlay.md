@@ -1,6 +1,6 @@
 # okay-inlay — programs inlaid into transformer weights (spec, 2026-11-03)
 
-Status: research. Eleven experiments built and checked (§4); the library and the next experiments planned (§6).
+Status: research. Twelve experiments built and checked (§4); the library and the next experiments planned (§6).
 Origin: the operator's design sessions of 2026-11-03, starting from Tracr (arXiv 2301.05062, compiling RASP into
 transformer weights) and the "weight-space programming" post (MIT, 2026-11).
 
@@ -93,6 +93,15 @@ weights are the deepest port ("weights") of that design.
   prefix counts). The accepted leaves are the models (#SAT). 11 instances, counts equal to brute force: random 3-SAT
   n = 10, m = 42: 7–14 branch nodes against 1,024 leaves; n = 16, m = 68: 23–41 against 65,536; **n = 20, m = 85
   (UNSAT): 15 branch nodes, 11 turns, 14 slots at peak, against 1,048,576 leaves**.
+- **`Branching.sc`** — intuition in DPLL (spec §8.1). (a) **Counting, the order of decisions** from a noisy "which
+  variable is a key" score, on instances with k hidden key variables (the rest defined by XOR chains): the model
+  counts equal brute force under **every** order (30 runs — a bad ranking costs branches, never correctness); keys
+  first bounds the tree by 2ᵏ (16 / 32 / 64 nodes, no blow-up like 116 or 60), but is not the smallest on average
+  (index 40, ε = 0.5 21, ε = 0 32 nodes): small trees come from orders that conflict early, not from structural
+  knowledge — what the right intuition has to be about. (b) **Finding one solution: a dive** that follows guessed
+  values without forking (planted 3-SAT, n = 20, m = 85): with exact guesses found in all 6 in 12–20 turns and zero
+  branches (full search 26–95 nodes), each answer checked independently; with noisy guesses a lone dive is brittle
+  (p = 0.1: 2 of 6), the full search the backup. Next: branch only where the model is unsure (§8.1).
 
 Neuron counts of the one-hot versions are dominated by copies of one-hot pointers (N ≈ positions); binary pointers
 cut them ~85× (`HandlersBinary.sc`).
@@ -137,7 +146,8 @@ Exact, exhaustive, parallel mechanisms (Datalog's rounds, DPLL's propagation and
 the model; the model's own understanding supplies what they cannot: facts read from text, constraints written from
 a request, soft preferences with weights, and the intuition of where to branch. The meeting points:
 
-1. **Neural branching.** DPLL's "first unassigned variable" replaced by a score from the model (which variable,
+1. **Neural branching** — first results 2026-11-03 (`Branching.sc`, §4); next: confidence-gated branching (dive where
+   the model is sure, fork where it is not). DPLL's "first unassigned variable" replaced by a score from the model (which variable,
    which value first); propagation and checks stay exact, so a bad hunch costs time, never correctness. Measure
    branch nodes against the plain rule.
 2. **Neural facts.** Datalog with one relation produced by a reader over the model's states (calibrated by
