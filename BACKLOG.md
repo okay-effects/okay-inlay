@@ -14,3 +14,8 @@
 7. **weighted MaxSAT with neural weights** — soft clauses weighted by confidence. §8.3.
 8. **CDCL** — learned clauses appended, backjumping by pointer. §8.5.
 9. **text → constraints inside the model** — the model writes clauses into the circuits' positions. §8.4.
+10. **Wordle, steps 4–5** (operator, 2026-11-03; steps 1–3 done: `Wordle.sc`, §4) — the model's intuition: a toy
+    one (word frequency), then a real Qwen 0.5–1B by mlx-scala; A the model alone, B the model + the CPU solver, C
+    the model with the filter and the mask inside; wins, moves, guesses against the hints, invented words. Step 5
+    (the one for practice): the filter and the mask inside a standard weights file, run by an unmodified engine —
+    the "0 violations" kept with no outside code.

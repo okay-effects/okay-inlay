@@ -111,6 +111,20 @@ weights are the deepest port ("weights") of that design.
   7.9 nodes and 5 slots; q = 0.25 (mostly unsure): 8 of 8, 36.4 nodes, 22.8 slots. The failures come from wrong
   confident guesses (0.95 over 24 variables: one wrong is likely) — next: on a failed dive, widen from the least
   confident decisions first. Slow to run (~20 min: 120 transformer runs simulated in Scala loops).
+- **`Wordle.sc`** — Wordle's hint filter and its move mask inside a transformer (operator, 2026-11-03; steps 1–3).
+  Dictionary: the 8,506 five-letter lowercase words of /usr/share/dict/words (web2; many rare ones); 300 answers by
+  a seed. The reference: w is a candidate iff each guess would give w the same feedback (repeated letters as Wordle
+  counts them). Variant B, a CPU solver in hard mode (most common letters by place and presence): **96.0% won within
+  6, 4.23 moves on average**. The filter: a word is a position, one-hot letters 5 × 26; an MLP counts letters (a
+  ReLU ladder: ≥ j copies of L, j ≤ 5); a hint compiles to literals — green: the letter here; yellow / grey: not
+  here; the count ≥ n, or = n once a grey of the letter was seen — a linear violation count V(w); the head "allowed
+  words" scores −λ·V. **After 2,479 moves (the solver's games, 200 random six-guess games, repeated letters by hand)
+  the head's set equals the reference every time**, its weights uniform on it and exactly 0 elsewhere; the gate
+  relu(1 − V) is 0/1 and equal too. The move mask (as `Decode.sc`): the letters written so far are green literals of
+  the same head, its value the next letter's one-hot, the mask its output > 0. A toy model wanting the dictionary's
+  common letters, the hints unseen, over 1,406 states: unmasked **1,368 invented words and 25 guesses against the
+  hints**; masked **0 and 0**, never a dead end, and it wins 92.7% in 4.69 moves. ~9 s to run. Next: steps 4–5
+  (BACKLOG).
 
 Neuron counts of the one-hot versions are dominated by copies of one-hot pointers (N ≈ positions); binary pointers
 cut them ~85× (`HandlersBinary.sc`).
