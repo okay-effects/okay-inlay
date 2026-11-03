@@ -92,7 +92,8 @@ cheaper without changing the program.
 
 ## 6. Plan
 
-1. **Or-parallel search** — done 2026-11-03 (`OrParallel.sc`, §4). Each alternative of a choice runs as its own machine on its own position (the same
+1. **Or-parallel search** — done 2026-11-03 (`OrParallel.sc`, §4). Each alternative of a choice runs as its own
+   machine on its own position (the same
    weights); `∃x∃y∃z` then takes the steps of the longest branch, not their sum. Allocation of positions without
    conflicts by prefix counts (a spawner of rank r takes the r-th free slot — COUNT by selector width).
 2. **Binary pointers.** ±1 codes of log₂ N axes; a pointer's copy costs log N neurons; a head's score is maximal
