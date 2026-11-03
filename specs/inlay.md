@@ -1,6 +1,6 @@
 # okay-inlay — programs inlaid into transformer weights (spec, 2026-11-03)
 
-Status: research. Nine experiments built and checked (§4); the library and the next experiments planned (§6).
+Status: research. Ten experiments built and checked (§4); the library and the next experiments planned (§6).
 Origin: the operator's design sessions of 2026-11-03, starting from Tracr (arXiv 2301.05062, compiling RASP into
 transformer weights) and the "weight-space programming" post (MIT, 2026-11).
 
@@ -71,6 +71,12 @@ weights are the deepest port ("weights") of that design.
 - **`Handlers.sc`** — deep effect handlers with **multi-shot** continuations inside the CEK transformer. Capture = two
   pointers (segment, handler); resume reinstalls the handler; `exists` / `forall` handlers resume twice; 6 programs
   up to `∃x∃y∃z` (822 steps) equal to a reference machine.
+- **`HandlersBinary.sc`** — the same machine and rules with **binary pointers**: a pointer is log₂ N bits (0/1); a
+  copy is B neurons; `SELF + 1` an increment circuit (bit' = bit + carry − 2·(bit ∧ carry)); a guard "pointer =
+  NIL" one neuron with weight −1 on each bit; heads compare ±1 codes (q·k = B on the address, ≤ B − 2 elsewhere —
+  margin 2λ, still exactly hard). The 6 programs equal to the reference again, with **1,931–2,112 neurons instead of
+  168,458–176,975** (~85× fewer) and a **residual of 145–157 instead of 8,087** (~55×). Neurons now grow with log N,
+  not N.
 - **`OrParallel.sc`** — or-parallel search: a pool of slots (positions) as processors running one program; `CHOOSE`
   forks (the slot takes true, a free slot becomes its child with false), children allocated without conflicts by
   prefix counts (a requester of rank k takes the free slot of rank k), `REJECT` recycles a slot, a COUNT head reads
@@ -79,8 +85,8 @@ weights are the deepest port ("weights") of that design.
   13–15 turns against 115–133 — the parallel count grows with the program's length, the sequential one doubles with
   every variable.
 
-Neuron counts are dominated by copies of one-hot pointers (N ≈ positions); ±1 binary pointers cut them by tens of
-times (§6.2).
+Neuron counts of the one-hot versions are dominated by copies of one-hot pointers (N ≈ positions); binary pointers
+cut them ~85× (`HandlersBinary.sc`).
 
 ## 5. What it could give (the case for the research)
 
@@ -96,7 +102,7 @@ cheaper without changing the program.
    machine on its own position (the same
    weights); `∃x∃y∃z` then takes the steps of the longest branch, not their sum. Allocation of positions without
    conflicts by prefix counts (a spawner of rank r takes the r-th free slot — COUNT by selector width).
-2. **Binary pointers.** ±1 codes of log₂ N axes; a pointer's copy costs log N neurons; a head's score is maximal
+2. **Binary pointers** — done 2026-11-03 (`HandlersBinary.sc`, §4). ±1 codes of log₂ N axes; a pointer's copy costs log N neurons; a head's score is maximal
    (= log₂ N) only on equality, others ≤ log₂ N − 2 (margin 2, λ larger).
 3. **Datalog with a neural relation.** One relation produced by a reader over a model's states (calibrated), the rest
    exact — the bridge to "the model's understanding + exact deduction".
