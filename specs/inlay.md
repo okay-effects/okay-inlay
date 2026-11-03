@@ -102,8 +102,8 @@ cheaper without changing the program.
    machine on its own position (the same
    weights); `∃x∃y∃z` then takes the steps of the longest branch, not their sum. Allocation of positions without
    conflicts by prefix counts (a spawner of rank r takes the r-th free slot — COUNT by selector width).
-2. **Binary pointers** — done 2026-11-03 (`HandlersBinary.sc`, §4). ±1 codes of log₂ N axes; a pointer's copy costs log N neurons; a head's score is maximal
-   (= log₂ N) only on equality, others ≤ log₂ N − 2 (margin 2, λ larger).
+2. **Binary pointers** — done 2026-11-03 (`HandlersBinary.sc`, §4). ±1 codes of log₂ N axes; a pointer's copy
+   costs log N neurons; a head's score is maximal (= log₂ N) only on equality, others ≤ log₂ N − 2 (margin 2).
 3. **Datalog with a neural relation.** One relation produced by a reader over a model's states (calibrated), the rest
    exact — the bridge to "the model's understanding + exact deduction".
 4. **The library.** sbt, Scala 3: a DSL of step rules → weights, encodings (one-hot, ±1, numeric), layer and
