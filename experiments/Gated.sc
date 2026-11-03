@@ -182,7 +182,8 @@ val n = 24; val m = 102; val instances = 8
 println(s"planted 3-SAT, n = $n, m = $m, $instances instances; a calibrated model knows a share q of the variables")
 println(f"${"q"}%5s | ${"plain DPLL"}%18s | ${"lone dive"}%10s | ${"branch where unsure"}%28s | ${"+ backup"}%10s")
 println(
-  f"${""}%5s | ${"nodes"}%8s ${"slots"}%9s | ${"found"}%10s | ${"found"}%8s ${"nodes"}%8s ${"slots"}%10s | ${"nodes"}%10s"
+  f"${""}%5s | ${"nodes"}%8s ${"slots"}%9s | ${"found"}%10s | " +
+    f"${"found"}%8s ${"nodes"}%8s ${"slots"}%10s | ${"nodes"}%10s"
 )
 for q <- Seq(1.0, 0.9, 0.75, 0.5, 0.25) do
   val rows = (1 to instances).map { s =>
