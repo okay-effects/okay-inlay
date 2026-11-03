@@ -129,3 +129,24 @@ Programs (the reverse direction); looped transformers as programmable computers 
 InterpBench / TracrBench (models with known circuits); Memorizing Transformers, RETRO, KBLaM (memory in attention);
 DeepProbLog, Scallop, Logic Tensor Networks (logic with neural predicates); Logic-LM (LLM + solver); effect handlers'
 abstract machines (Hillerström & Lindley); monitor-guided decoding (static analysis constraining code LMs).
+
+## 8. The goal: brute force and understanding in one model (operator, 2026-11-03)
+
+"We integrate the brute force of Datalog and a SAT solver with the semantic understanding inside the model itself."
+Exact, exhaustive, parallel mechanisms (Datalog's rounds, DPLL's propagation and branching, lookups) compiled into
+the model; the model's own understanding supplies what they cannot: facts read from text, constraints written from
+a request, soft preferences with weights, and the intuition of where to branch. The meeting points:
+
+1. **Neural branching.** DPLL's "first unassigned variable" replaced by a score from the model (which variable,
+   which value first); propagation and checks stay exact, so a bad hunch costs time, never correctness. Measure
+   branch nodes against the plain rule.
+2. **Neural facts.** Datalog with one relation produced by a reader over the model's states (calibrated by
+   activations, then trained if needed); every derived fact carries whether it rests on a neural fact.
+3. **Soft constraints with neural weights** — weighted MaxSAT: hard clauses exact, soft ones weighted by the model's
+   confidence (a client "probably prefers mornings").
+4. **Text → constraints.** The model writes the clauses / rules (a semantic parse) into the positions the compiled
+   circuits read — the whole loop inside one forward computation, no tool call.
+5. **Clause learning (CDCL).** A conflict's learned clause appended as a new position (append-only memory fits);
+   backjumping by restoring a pointer.
+6. **Capacity and overflow.** What fits (clauses, facts, branches) runs inside; beyond it the same program's
+   handler moves to the runtime (a CPU solver as an effect) — one program, two handlers.
