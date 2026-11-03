@@ -1,6 +1,6 @@
 # okay-inlay — programs inlaid into transformer weights (spec, 2026-11-03)
 
-Status: research. Twelve experiments built and checked (§4); the library and the next experiments planned (§6).
+Status: research. Thirteen experiments built and checked (§4); the library and the next experiments planned (§6).
 Origin: the operator's design sessions of 2026-11-03, starting from Tracr (arXiv 2301.05062, compiling RASP into
 transformer weights) and the "weight-space programming" post (MIT, 2026-11).
 
@@ -102,6 +102,15 @@ weights are the deepest port ("weights") of that design.
   values without forking (planted 3-SAT, n = 20, m = 85): with exact guesses found in all 6 in 12–20 turns and zero
   branches (full search 26–95 nodes), each answer checked independently; with noisy guesses a lone dive is brittle
   (p = 0.1: 2 of 6), the full search the backup. Next: branch only where the model is unsure (§8.1).
+- **`Gated.sc`** — branch where unsure (spec §8.1): a calibrated model gives a value and a confidence per variable
+  (on a share q it "knows", 0.95; elsewhere 0.55; a guess right with the probability of its confidence); confident
+  decisions dive (no fork), unsure ones fork (the guess first); plain DPLL as the backup when nothing is found.
+  Planted 3-SAT, n = 24, m = 102, 8 instances per q; plain DPLL to the first solution: 70.6 branch nodes, 43.8 slots
+  at peak. Branching where unsure finds 4–8 of 8 with **1.0–36.4 nodes**; with the backup, every instance solved at
+  **16.4–37.4 nodes on average — 2–4× less work than plain DPLL**, every answer checked. q = 0.5: 6 of 8 found with
+  7.9 nodes and 5 slots; q = 0.25 (mostly unsure): 8 of 8, 36.4 nodes, 22.8 slots. The failures come from wrong
+  confident guesses (0.95 over 24 variables: one wrong is likely) — next: on a failed dive, widen from the least
+  confident decisions first. Slow to run (~20 min: 120 transformer runs simulated in Scala loops).
 
 Neuron counts of the one-hot versions are dominated by copies of one-hot pointers (N ≈ positions); binary pointers
 cut them ~85× (`HandlersBinary.sc`).
