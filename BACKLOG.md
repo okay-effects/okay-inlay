@@ -20,6 +20,6 @@
     (the one for practice): the filter and the mask inside a standard weights file, run by an unmodified engine —
     the "0 violations" kept with no outside code.
 
-7. **okay-reason** (operator, 2026-11-03) — exact reasoning as an MCP tool the model uses: general logic (assert,
+7. **okay-reason** (operator, 2026-11-03) — v0 BUILT 2026-11-04 in ~/work/my/okay-reason (its specs/reason.md: four products on one model) — exact reasoning as an MCP tool the model uses: general logic (assert,
    query, solve, why_not) + domain packs (failures first: explain → minimal explanations, how many, next check);
    benchmark A / T / E on okay-agent + Qwen. specs/reason.md.
