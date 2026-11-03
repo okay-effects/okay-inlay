@@ -1,6 +1,6 @@
 # okay-inlay — programs inlaid into transformer weights (spec, 2026-11-03)
 
-Status: research. Eight experiments built and checked (§4); the library and the next experiments planned (§6).
+Status: research. Nine experiments built and checked (§4); the library and the next experiments planned (§6).
 Origin: the operator's design sessions of 2026-11-03, starting from Tracr (arXiv 2301.05062, compiling RASP into
 transformer weights) and the "weight-space programming" post (MIT, 2026-11).
 
@@ -71,6 +71,13 @@ weights are the deepest port ("weights") of that design.
 - **`Handlers.sc`** — deep effect handlers with **multi-shot** continuations inside the CEK transformer. Capture = two
   pointers (segment, handler); resume reinstalls the handler; `exists` / `forall` handlers resume twice; 6 programs
   up to `∃x∃y∃z` (822 steps) equal to a reference machine.
+- **`OrParallel.sc`** — or-parallel search: a pool of slots (positions) as processors running one program; `CHOOSE`
+  forks (the slot takes true, a free slot becomes its child with false), children allocated without conflicts by
+  prefix counts (a requester of rank k takes the free slot of rank k), `REJECT` recycles a slot, a COUNT head reads
+  the number of solutions at the end. SAT over 3 variables, 8 formulas: model counts equal to brute force; 4–14
+  parallel turns against 15–70 sequential steps (all branches in turn); 4 variables (run with NV = 4, P = 40):
+  13–15 turns against 115–133 — the parallel count grows with the program's length, the sequential one doubles with
+  every variable.
 
 Neuron counts are dominated by copies of one-hot pointers (N ≈ positions); ±1 binary pointers cut them by tens of
 times (§6.2).
@@ -85,7 +92,7 @@ cheaper without changing the program.
 
 ## 6. Plan
 
-1. **Or-parallel search.** Each alternative of a choice runs as its own machine on its own position (the same
+1. **Or-parallel search** — done 2026-11-03 (`OrParallel.sc`, §4). Each alternative of a choice runs as its own machine on its own position (the same
    weights); `∃x∃y∃z` then takes the steps of the longest branch, not their sum. Allocation of positions without
    conflicts by prefix counts (a spawner of rank r takes the r-th free slot — COUNT by selector width).
 2. **Binary pointers.** ±1 codes of log₂ N axes; a pointer's copy costs log N neurons; a head's score is maximal
