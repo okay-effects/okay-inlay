@@ -43,7 +43,7 @@ Datalog evaluation parameterized by a commutative semiring (provenance semirings
 |---|---|---|
 | Boolean (∨, ∧) | the derived facts | always |
 | why-provenance / derivation trees | proofs | okay-facts' `proof` in `facts[]` |
-| Viterbi (max, ×) over [0, 1] | the confidence of a conclusion from neural facts | intent facts with the model's confidence |
+| Viterbi (max, ×) on [0, 1] | a conclusion's confidence from neural facts | intent facts (model's confidence) |
 | counting (ℕ, +, ×) | the number of derivations | diagnostics, ranking |
 | thresholded float32 steps | the Boolean semiring in weights | the Inlay handler |
 
