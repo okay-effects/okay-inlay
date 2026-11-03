@@ -1,5 +1,8 @@
 # BACKLOG — okay-inlay
 
+0. **okay-datalog** (operator, 2026-11-03; first) — one Datalog program, many handlers: Eval (JVM + Scala.js for
+   Workers), Proof (derivation semiring), Inlay (weights on MLX), Sql; semirings as handlers; laws Eval == Inlay ==
+   Proof. specs/datalog.md; okay-facts §18 uses it.
 1. **Datalog with a neural relation** — one relation from a reader over the model's states, the rest exact. §6.3.
 2. **the library** — sbt project: a DSL of step rules (guards, constants, copies, shifts) → weights; the
    interpreter; the experiments as its tests. §6.4.
