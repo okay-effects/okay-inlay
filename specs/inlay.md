@@ -148,8 +148,8 @@ a request, soft preferences with weights, and the intuition of where to branch. 
 
 1. **Neural branching** — first results 2026-11-03 (`Branching.sc`, §4); next: confidence-gated branching (dive where
    the model is sure, fork where it is not). DPLL's "first unassigned variable" replaced by a score from the model
-   (which variable, which value first); propagation and checks stay exact, so a bad hunch costs time, never correctness. Measure
-   branch nodes against the plain rule.
+   (which variable, which value first); propagation and checks stay exact, so a bad hunch costs time, never
+   correctness. Measure branch nodes against the plain rule.
 2. **Neural facts.** Datalog with one relation produced by a reader over the model's states (calibrated by
    activations, then trained if needed); every derived fact carries whether it rests on a neural fact.
 3. **Soft constraints with neural weights** — weighted MaxSAT: hard clauses exact, soft ones weighted by the model's
