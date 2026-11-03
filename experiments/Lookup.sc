@@ -21,8 +21,9 @@ def head(x: Array[Float], table: Seq[Row], lambda: Float, pred: (Int, Int) => Bo
   val scores = rows.map { m =>
     val k = m.indexWhere(_ == 1f)
     val q = x.indexWhere(_ == 1f)
-    if m(4) == 0.5f then lambda * 0.5f                    // the default row: always half
-    else if pred(q, k) then lambda else 0f                 // W_QK = lambda * predicate table
+    if m(4) == 0.5f then lambda * 0.5f // the default row: always half
+    else if pred(q, k) then lambda
+    else 0f // W_QK = lambda * predicate table
   }
   val mx = scores.max
   val e = scores.map(s => math.exp((s - mx).toDouble).toFloat)

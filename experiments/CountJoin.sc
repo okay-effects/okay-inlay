@@ -6,8 +6,13 @@ val skus = Vector("A", "B", "C", "D")
 case class Row(key: Int, value: Vector[Float])
 
 // one head: score = lambda * pred for real rows, lambda * nullScore for the null row; softmax; weighted values
-def head(q: Vector[Float], rows: Seq[Row], lambda: Float, nullScore: Float,
-         pred: (Int, Int) => Boolean): (Seq[Float], Vector[Float]) =
+def head(
+    q: Vector[Float],
+    rows: Seq[Row],
+    lambda: Float,
+    nullScore: Float,
+    pred: (Int, Int) => Boolean
+): (Seq[Float], Vector[Float]) =
   val scores = rows.map { r =>
     if r.key < 0 then lambda * nullScore
     else lambda * skus.indices.map(i => if pred(i, r.key) then q(i) else 0f).sum
@@ -35,8 +40,11 @@ val countRows = Row(-1, Vector(1f)) +: orders
 def count(q: String, pred: (Int, Int) => Boolean, lambda: Float = 250f) =
   val (w, out) = head(onehot(skus.indexOf(q)), countRows, lambda, 1f, pred)
   val (neurons, c) = mlp(out(0))
-  println(f"COUNT WHERE sku ${if pred(1, 1) then "=" else "<"} $q%s: weights=${w.map(v => f"$v%.3g").mkString("[", ",", "]")}" +
-    f" y=${out(0)}%.6f  mlp($neurons neurons) -> $c%.4f")
+  println(
+    f"COUNT WHERE sku ${if pred(1, 1) then "=" else "<"} $q%s: " +
+      f"weights=${w.map(v => f"$v%.3g").mkString("[", ",", "]")}" +
+      f" y=${out(0)}%.6f  mlp($neurons neurons) -> $c%.4f"
+  )
 count("B", _ == _)
 count("C", (q, k) => k < q)
 count("A", (q, k) => k < q)
@@ -52,8 +60,8 @@ def orderRows(t: Seq[(String, String)]) =
 val priceRows = Row(-1, Vector(0f)) +: Seq("A" -> 10f, "B" -> 25f, "C" -> 7f, "D" -> 40f)
   .map((s, p) => Row(skus.indexOf(s), Vector(p)))
 def join(order: String, t: Seq[(String, String)] = ordersById) =
-  val (_, sku) = head(idHot(order), orderRows(t), 250f, 0.5f, _ == _)       // layer 1: attention
-  val (_, price) = head(sku, priceRows, 250f, 0.5f, _ == _)                 // layer 2: attention
+  val (_, sku) = head(idHot(order), orderRows(t), 250f, 0.5f, _ == _) // layer 1: attention
+  val (_, price) = head(sku, priceRows, 250f, 0.5f, _ == _) // layer 2: attention
   println(f"order $order: sku=${sku.mkString("[", ",", "]")} price=${price(0)}")
 join("o1"); join("o2"); join("o4")
 println("-- orderId not unique: o2 -> B and o2 -> D")
@@ -69,5 +77,8 @@ check(near(countOf("B", _ == _, 10f), 3), "COUNT at lambda 10 still 3 (the ladde
 def joinPrice(order: String, t: Seq[(String, String)] = ordersById) =
   head(head(idHot(order), orderRows(t), 250f, 0.5f, _ == _)._2, priceRows, 250f, 0.5f, _ == _)._2(0)
 check(joinPrice("o1") == 7f && joinPrice("o2") == 25f && joinPrice("o4") == 0f, "JOIN o1 7, o2 25, o4 missing 0")
-check(!Set(25f, 40f).contains(joinPrice("o2", ordersById :+ ("o2" -> "D"))), "a non-unique key breaks the JOIN (expected)")
+check(
+  !Set(25f, 40f).contains(joinPrice("o2", ordersById :+ ("o2" -> "D"))),
+  "a non-unique key breaks the JOIN (expected)"
+)
 if failures > 0 then sys.exit(1) else println("all checks passed")

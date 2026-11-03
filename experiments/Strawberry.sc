@@ -20,8 +20,8 @@ def ladder(y: Float): Int = math.round(ts.map(t => 1f - (relu(steep * (y - t)) -
 
 // ---- 1. characters: one position per letter
 val text = "strawberry"
-val chars = '^' +: text.toVector                      // position 0 = BOS
-val isR = chars.map(_ == 'r')                         // MLP layer: elementwise
+val chars = '^' +: text.toVector // position 0 = BOS
+val isR = chars.map(_ == 'r') // MLP layer: elementwise
 val running = (1 until chars.size).map(p => ladder(width(p, isR)))
 println("characters: " + text.zip(running).map((c, n) => s"$c:$n").mkString(" "))
 
@@ -37,8 +37,12 @@ val wordId = tokens.indices.map(p => if p == 0 then 0 else ladder(width(p, wordS
 // sum over tokens of c_i = sum over j of #{i : c_i >= j}  (layer cake), three heads in parallel, three ladders
 def wordCount(p: Int, c: Char) =
   (1 to 3).map(j => ladder(width(p, i => wordId(i) == wordId(p) && atLeast(i, c, j)))).sum
-println("tokens:     " + tokens.indices.drop(1).map(p =>
-  s"'${tokens(p)}' word=${wordId(p)} r=${wordCount(p, 'r')}").mkString(" | "))
+println(
+  "tokens:     " + tokens.indices
+    .drop(1)
+    .map(p => s"'${tokens(p)}' word=${wordId(p)} r=${wordCount(p, 'r')}")
+    .mkString(" | ")
+)
 val perJ = (1 to 3).map(j => (5 to 7).count(i => atLeast(i, 'r', j)))
 println(s"at 'berry': #{c>=1}, #{c>=2}, #{c>=3} = ${perJ.mkString(", ")} -> ${perJ.sum}")
 // ---- checks

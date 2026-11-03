@@ -52,16 +52,25 @@ weights are the deepest port ("weights") of that design.
 
 ## 4. Experiments (experiments/*.sc; `bin/check` runs them all)
 
-| Experiment | What it shows | Result (from its output) |
-|---|---|---|
-| `Lookup.sc` | one head reads an external table row by key | price 25 exactly at λ ≥ ~210; missing key 0 (null row); duplicates AVG 30; range AVG 17.5 |
-| `CountJoin.sc` | COUNT by selector width + a ReLU ladder; JOIN by two heads | counts 3, 4, 0, 1 exact; at λ = 10 still 3 (the ladder corrects); JOIN o1 7, o2 25, missing 0; a non-unique key gives 21.67 |
-| `Strawberry.sc` | counting a letter over characters and over BPE tokens | running counts exact; tokens: spelling columns in the embedding + "layer cake" heads (Σcᵢ = Σⱼ #{cᵢ ≥ j}) → 3 r in strawberry |
-| `Looped.sc` | a register machine as a looped block (program in the context) | d_model 62, 177 neurons, 1 head; A+B on 136 inputs and A+2B on 72, the same weights, equal to the interpreter; only 0/1 after 80 steps; HALT a fixed point |
-| `Decode.sc` | the decode port: mask, force, roll back | a tool call by its schema (15 of 21 tokens forced); a template with no digit and no name; a secret never printed under two tokenizations; rolled back and replaced → `key = [hidden]` |
-| `Cek.sc` | the CEK machine for call-by-value λ (de Bruijn) inside a transformer | 6 programs (Church booleans) equal to an ordinary CEK interpreter in answer **and in step count**; ~40k neurons from ~10 rules |
-| `Datalog.sc` | transitive closure bottom-up, constants as positions, relations as bit-rows | a 16-chain: 120 facts, linear rule 15 rounds, doubling rule 5; 5 random graphs equal to a naive engine |
-| `Handlers.sc` | deep effect handlers with **multi-shot** continuations inside the CEK transformer | capture = two pointers (segment, handler); resume reinstalls the handler; `exists`/`forall` handlers resume twice; 6 programs up to `∃x∃y∃z` (822 steps) equal to a reference machine |
+- **`Lookup.sc`** — one head reads an external table row by key. Price 25 exactly at λ ≥ ~210; a missing key reads
+  0 (the null row); duplicates AVG 30; a range AVG 17.5.
+- **`CountJoin.sc`** — COUNT by selector width + a ReLU ladder; JOIN by two heads. Counts 3, 4, 0, 1 exact; at
+  λ = 10 still 3 (the ladder corrects); JOIN o1 7, o2 25, missing 0; a non-unique key gives 21.67.
+- **`Strawberry.sc`** — counting a letter over characters and over BPE tokens. Running counts exact; tokens: spelling
+  columns in the embedding + "layer cake" heads (Σcᵢ = Σⱼ #{cᵢ ≥ j}) → 3 r in strawberry.
+- **`Looped.sc`** — a register machine as a looped block, the program in the context. d_model 62, 177 neurons, 1
+  head; A+B on 136 inputs and A+2B on 72 with the same weights, equal to the interpreter; only 0/1 after 80 steps;
+  HALT a fixed point.
+- **`Decode.sc`** — the decode port: mask, force, roll back. A tool call by its schema (15 of 21 tokens forced); a
+  template with no digit and no name; a secret never printed under two tokenizations; rolled back and replaced →
+  `key = [hidden]`.
+- **`Cek.sc`** — the CEK machine for call-by-value λ (de Bruijn) inside a transformer. 6 programs (Church booleans)
+  equal to an ordinary CEK interpreter in answer **and in step count**; ~40k neurons from ~10 rules.
+- **`Datalog.sc`** — transitive closure bottom-up, constants as positions, relations as bit-rows. A 16-chain: 120
+  facts, linear rule 15 rounds, doubling rule 5; 5 random graphs equal to a naive engine.
+- **`Handlers.sc`** — deep effect handlers with **multi-shot** continuations inside the CEK transformer. Capture = two
+  pointers (segment, handler); resume reinstalls the handler; `exists` / `forall` handlers resume twice; 6 programs
+  up to `∃x∃y∃z` (822 steps) equal to a reference machine.
 
 Neuron counts are dominated by copies of one-hot pointers (N ≈ positions); ±1 binary pointers cut them by tens of
 times (§6.2).
