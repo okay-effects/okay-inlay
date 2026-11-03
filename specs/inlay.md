@@ -1,6 +1,6 @@
 # okay-inlay — programs inlaid into transformer weights (spec, 2026-11-03)
 
-Status: research. Ten experiments built and checked (§4); the library and the next experiments planned (§6).
+Status: research. Eleven experiments built and checked (§4); the library and the next experiments planned (§6).
 Origin: the operator's design sessions of 2026-11-03, starting from Tracr (arXiv 2301.05062, compiling RASP into
 transformer weights) and the "weight-space programming" post (MIT, 2026-11).
 
@@ -84,6 +84,15 @@ weights are the deepest port ("weights") of that design.
   parallel turns against 15–70 sequential steps (all branches in turn); 4 variables (run with NV = 4, P = 40):
   13–15 turns against 115–133 — the parallel count grows with the program's length, the sequential one doubles with
   every variable.
+- **`Dpll.sc`** — DPLL inside a transformer: clauses are positions (POS / NEG masks), branches are slots (TRUE /
+  FALSE rows). Per turn, for all branches at once: a conflict head (score λ·(#false − |C| − |C|·#true): 0 only on a
+  falsified clause) and a units head (λ·(#false − (|C|−1) − |C|·#true): 0 only on a unit clause; the mean of the unit
+  clauses' masks, masked by "unassigned", is exactly the set of implied literals — unit propagation over every clause
+  in parallel); the MLP rejects on a conflict (or a variable implied both ways — a bug the first run caught: counts
+  too high), propagates, accepts a full assignment, or decides the first unassigned variable by forking (children by
+  prefix counts). The accepted leaves are the models (#SAT). 11 instances, counts equal to brute force: random 3-SAT
+  n = 10, m = 42: 7–14 branch nodes against 1,024 leaves; n = 16, m = 68: 23–41 against 65,536; **n = 20, m = 85
+  (UNSAT): 15 branch nodes, 11 turns, 14 slots at peak, against 1,048,576 leaves**.
 
 Neuron counts of the one-hot versions are dominated by copies of one-hot pointers (N ≈ positions); binary pointers
 cut them ~85× (`HandlersBinary.sc`).
