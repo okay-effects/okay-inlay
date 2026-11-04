@@ -70,3 +70,31 @@ identifier, which the port lets be); given the members' names, it DECLARED its o
 is not better: on this model, names are not the bottleneck; the API's meaning is. Next: the same on Qwen3.6-35B
 (after the equivalence bench frees the GPU), and the outline with signatures; the mask is worth keeping as a
 guarantee in an agent that has the knowledge (symdex's `members`/`outline` in its loop), not as the knowledge.
+
+## Third measure (2026-11-04): knowledge in the prompt, the compiler's feedback
+
+Arms on the same 10 tasks, Qwen3-4B: `sigs` — the owner's public API as it is called (`Equivalence.verdict(out:
+String): Either[String, Verdict]`, each with its doc comment's first line, read from symdex's sources); `usage` — and
+up to four real calls of it elsewhere in symdex; `loop` — and up to three rounds with the compiler's errors; `loop +
+held` — and the mask. A new column: compiles AND calls the owner (`Owner.x` with x a member) — the earlier "5 of 10"
+were code that did not touch symdex at all.
+
+| arm | compile | compile and call symdex | invented |
+|---|---|---|---|
+| free / held / outline (earlier) | 5 of 10 | 0 | 3 free, 0 held |
+| sigs | 4 of 10 | 2 | 0 |
+| usage | 6 of 10 | 4 | 0 |
+| loop (3 rounds at most) | 7 of 10 | 4 | 0 |
+| loop + held | 7 of 10 | 4 | 0 |
+
+- Knowledge is what moves it: from 0 answers that compile and use the API to 4; real calls (examples) count more
+  than signatures; the compiler's feedback adds compiles.
+- How the knowledge is put matters: the first run listed the signatures bare (`def verdict(…)`) and the model called
+  them unqualified (`verdict(out)`, `seeded`) — 2, 3, 5 of 10; written as they are called, 4, 6, 7.
+- With knowledge in the prompt the mask has nothing left to do: 0 invented without it. Its place is a guarantee
+  where the knowledge is partial (a long API, a member not shown), not a substitute.
+- What is left fails on meaning (a member called with the wrong arguments, `Path` not imported) — what types
+  (symdex's `type`) and the loop's rounds address.
+
+For okay-agent: before code that calls a project object, symdex's signatures of it AND its real calls in the
+prompt (or the agent asks `members` / `references`), and the compiler's errors back — the mask optional on top.
