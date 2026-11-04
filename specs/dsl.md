@@ -59,5 +59,38 @@ The embedding gives each position its inputs (the token as a `Cat`, its position
 
 Done 2026-11-04: v0 as stated — `LawSuite`, the law held on every program at the first run.
 
-Next (v1): `Count` (selector width, CountJoin.sc), numeric fields, the allowed set as output and the `Port` handler
-— then the quote program run as weights == mlx-scala's `Quote` on every step (specs/quotes.md stage b).
+## v1 — the quote as weights (2026-11-04)
+
+**A finding first: the runtime `Quote`'s state is not a fixed-depth transformer's.** mlx-scala's `Quote` (8e0c5f2)
+keeps the candidate positions and narrows them each token: `candᵢ = { p + 1 | p ∈ candᵢ₋₁, source(p) = tokᵢ }` — a
+recurrence along the generated positions. A layer at position i reads the previous positions' inputs to that layer,
+not their final state; a recurrence over n positions needs n layers (or a loop, or the state carried in tokens).
+Written without the recurrence, "the whole copy equals the span before p" compares every pair (i, p) over a length
+that grows — not a fixed set of heads either. What a fixed depth does exactly is a WINDOW: the copy's last k tokens
+against the k tokens before p (induction with k pairs). So (b) is stated against `Quote` with a window k:
+
+- **`QuoteK`** (the reference, okay-inlay's tests): allowed after the open marker = `{ source(p) | the last min(m, k)
+  copied tokens equal source[p − min(m,k) .. p − 1] }`, m the tokens copied so far; the close always.
+- Equal to the full `Quote` while every window of k copied tokens occurs once in the source (or all its occurrences
+  continue alike); beyond, it can splice two spans sharing k tokens. How often, on real logs and code, for k = 4, 8,
+  16, 32: measured, not assumed.
+
+**New in the DSL (each with the law):**
+
+- `Many(name, values)` — a SET of values: one 0/1 dim each (decoded: the set).
+- `Lookup(…, all = true)` — every match's source value gathered into a `Many` (OR): the head averages the one-hots,
+  an MLP ladder in the same layer turns any share ≥ 1/maxLen into 1 (`ReLU(L·x) − ReLU(L·x − 1)`, L = 2·maxLen).
+- `Lookup(…, wild = true)` — a query `Cat` field that is none matches any key (the pair skipped): linear in the query
+  (`pairmax · (1 − Σ one-hot)`), so it is the same head.
+- `Builtin.back(d)` — the position d back (none before the start): the k-window's fields by k heads.
+
+**The program** (k fixed): `isMark`, `mark` (the latest marker, `latest`); `winₐ` for d = 1..k−1 — the token d back
+if it is after the marker (a lookup on the position d back AND the same latest marker AND not a marker; none
+otherwise → a wildcard); `prevₐ` for d = 1..k — every position's tokens d back; the induction lookup `all`, `wild`:
+query (the current token if not a marker, win₁ … win_{k−1}) against (prev₁ … prev_k), source positions only, gathers
+`allowed`. Read-out: `inside` (the latest marker is the open one) and `allowed`; the `Port` handler allows `allowed ∪
+{close}` inside, any token outside.
+
+**Done when:** the law for `Many`, `all`, `wild`, `back` on random inputs; the quote program equals `QuoteK` on every
+step of random token streams with sources and markers; the window measured against the full `Quote` on real logs.
+Then: `Count` (selector width), MLX, the block on Qwen.
