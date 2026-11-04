@@ -37,7 +37,7 @@ final class Verify(p: Project, checkSource: String, scalaVersion: String, timeou
       for ((pkg, its), n) <- byPkg.toVector.zipWithIndex do
         val imports = its.flatMap((it, _) => p.imports(it._1.member.file)).distinct
         val objects = its.map { case ((t, code), i) =>
-          val own = if t.member.owner.isEmpty then "" else s"  import ${t.member.owner}.*\n"
+          val own = if t.member.owner.isEmpty || t.member.instance then "" else s"  import ${t.member.owner}.*\n"
           s"object T$i:\n$own${indent(code)}\nobject R$i:\n$own${indent(t.reference)}\n"
         }
         Files.writeString(dir.resolve(s"Candidates$n.scala"), (if pkg.isEmpty || pkg == "scala" then ""
@@ -56,13 +56,22 @@ final class Verify(p: Project, checkSource: String, scalaVersion: String, timeou
       // generators for common types the project's classpath has (okay-effects' JSON value), imported where compared
       val json = p.classpath.contains("okay-effects-json-value")
       if json then Files.writeString(dir.resolve("Gens.scala"), Verify.jsonGen)
+      // a given for each project type in the signatures (not generic): a recursive one's derivation finds it
+      val named = items.flatMap((t, _) => """\b[A-Z]\w*\b(?!\s*\[)""".r.findAllIn(t.params).toVector).distinct
+      // a generic project type applied in a signature (`Path[Int]`, the receiver of a generic class's member)
+      val applied = items.flatMap((t, _) => """\b([A-Z]\w*)(\[[^\[\]]*\])""".r.findAllMatchIn(t.params)
+        .flatMap(m => p.types.get(m.group(1)).map(_ + m.group(2))).toVector).distinct
+      val givens = (p.reach(named).flatMap(p.types.get).distinct ++ applied).zipWithIndex.map((q, i) =>
+        s"given forgeGen$i: okay.symdex.check.Gen[$q] = okay.symdex.check.Gen.auto[$q]")
       Files.writeString(dir.resolve("Main.scala"), (if json then "import forgegens.given\n\n" else "") +
+        givens.mkString("", "\n", "\n\n") +
         "@main def forgeMain(): Unit =\n" + calls.mkString("\n") + "\n")
       val (rc, out) = run(Seq("scala-cli", "run", "--server=false", "-S", scalaVersion, "--classpath", p.classpath,
         "."), dir)
       if rc != 0 && !out.linesIterator.exists(_.matches("\\d+\\t.*")) then
         Left(out.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator
-          .filter(l => l.contains("Error") || l.contains("Not found") || l.contains("not a member")).take(6)
+          .filter(l => l.contains("Error") || l.contains("Not found") || l.contains("not a member") ||
+            l.contains("No given") || l.contains("Found:") || l.contains("Required:")).take(8)
           .mkString(" | "))
       else
         val lines = out.linesIterator.filter(_.matches("\\d+\\t.*")).map(l => l.takeWhile(_ != '\t').toInt ->
@@ -99,6 +108,15 @@ given Gen[Json] = Gen.of(
     Json.Num(BigDecimal(1)), Json.Arr(Vector()), Json.Obj(Vector()), Json.Arr(Vector(Json.Num(BigDecimal(1)))),
     Json.Obj(Vector("a" -> Json.Str("b")))).take(s + 6),
   (r, s) => random(r, s))
+
+given Gen[Json.Obj] = Gen.of(
+  s => LazyList(Json.Obj(Vector()), Json.Obj(Vector("a" -> Json.Str("b"))), Json.Obj(Vector("a" -> Json.Num(BigDecimal(1)),
+    "b" -> Json.Null))).take(s + 1),
+  (r, s) => Json.Obj(Vector.fill(r.nextInt(3))((List("a", "b", "c")(r.nextInt(3)), random(r, s - 1))).distinctBy(_._1)))
+
+given Gen[Json.Arr] = Gen.of(
+  s => LazyList(Json.Arr(Vector()), Json.Arr(Vector(Json.Num(BigDecimal(1))))).take(s + 1),
+  (r, s) => Json.Arr(Vector.fill(r.nextInt(3))(random(r, s - 1))))
 
 private def random(r: scala.util.Random, s: Int): Json = r.nextInt(if s <= 0 then 4 else 6) match
   case 0 => Json.Null
