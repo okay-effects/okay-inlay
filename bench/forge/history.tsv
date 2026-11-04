@@ -1,3 +1,7 @@
 when	model	arm	tasks	compile	behave	seconds	note
 2026-11-04T12:00:42	mlx-community/Qwen3-4B-4bit	base	44	42	38	62	
 2026-11-04T12:00:42	mlx-community/Qwen3-4B-4bit	refs	44	44	43	81	8 examples, losses 0.1274 0.0002
+2026-11-04T13:31:42	mlx-community/Qwen3-4B-4bit	base	44	0	0	477	general 9/20; 
+2026-11-04T17:42:10	mlx-community/Qwen3-4B-4bit	base	55	52	47	431	general 9/20; 
+2026-11-04T17:42:10	mlx-community/Qwen3-4B-4bit	refs	55	55	55	101	general 10/20; 319 examples, losses 0.0136 0.0001
+2026-11-04T17:42:10	mlx-community/Qwen3-4B-4bit	refs+own	55	55	55	262	general 9/20; 535 examples, losses 0.0347 0.0178

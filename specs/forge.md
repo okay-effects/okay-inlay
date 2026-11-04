@@ -105,3 +105,24 @@ purposefully." `okay-forge` — one pipeline, each step a command, each result a
 6. **serve** — the adapter loaded by mlx-scala, served by okay-mlx, used by okay-agent.
 
 Every number in history.tsv: model, adapter, task set, compile, behave, time.
+
+## Transfer, first full run (2026-11-04, `TransferBench`, Qwen3-4B)
+
+Training: 319 tasks from eight other projects, each checked against its reference (okay-scala 11, okay-datalog 11,
+okay-store 53, okay-proof 45, okay-guard 171, okay-llm 21, okay-mcp 7; okay-simple and okay-ui 0 — their API is of a
+higher kind). Evaluation: symdex's 55 usable tasks (a project never trained on) and the 20 general tasks (regression).
+Greedy, no thinking, one round. LoRA rank 8 on q/v/o of all 36 layers, two epochs.
+
+| arm | symdex compile | symdex behave | general behave |
+|---|---|---|---|
+| base | 52 | 47 | 9 / 20 |
+| refs (319 references) | 55 | **55** | 10 / 20 |
+| refs + own (and 216 of the base model's own answers the verifier kept) | 55 | **55** | 9 / 20 |
+
+On a project it never saw, the adapter takes the 4B from 47 to 55 of 55, and the general tasks do not get worse (9 →
+10 → 9: within one task of noise). The base model's own verified answers add nothing on this measure (already at the
+ceiling). The run took 1 h 55 min, most of it the verifier's compilations (a task set checked once, then cached).
+
+What it does not show yet: the tasks are generated from templates (a call, a size, an emptiness …) — the same kinds in
+training and evaluation, so part of the gain is the task's form. Next: the adapter on SymbolsBench's hand-written
+tasks (other kinds, meaning-heavy), and on Qwen3.5-4B; the regression set grown past 20.

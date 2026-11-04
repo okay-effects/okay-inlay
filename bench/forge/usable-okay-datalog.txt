@@ -1,6 +1,11 @@
+okay.datalog.Atom#arity:call
+okay.datalog.Check.arities:call
+okay.datalog.Check.arities:right
 okay.datalog.Parse.program:call
 okay.datalog.Parse.program:right
 okay.datalog.Term.show:call
 okay.datalog.Term.show:length
-okay.datalog.Parse.atom:call
-okay.datalog.Parse.atom:right
+okay.datalog.Check.stratify:call
+okay.datalog.Check.stratify:right
+okay.datalog.Step#toString:call
+okay.datalog.Step#toString:length

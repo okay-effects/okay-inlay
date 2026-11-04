@@ -1,0 +1,7 @@
+okay.mcp.ToolResult.text:call
+okay.mcp.Rpc.encode:call
+okay.mcp.Rpc.encode:length
+okay.mcp.Rpc.decode:call
+okay.mcp.Rpc.decode:right
+okay.mcp.ToolResult.error:call
+okay.mcp.Rpc.json:call

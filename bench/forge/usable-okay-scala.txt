@@ -1,2 +1,11 @@
+okay.scala3.std.Cofree.leaf:call
+okay.scala3.std.Timers.executionContext:call
 okay.scala3.std.Async.defaultContext:call
+okay.scala3.std.History#all:call
+okay.scala3.std.History#all:size
+okay.scala3.std.History#all:empty
+okay.scala3.std.History#extract:call
+okay.scala3.std.History.of:call
+okay.scala3.std.History.of:defined
 okay.scala3.Escape.pure:call
+okay.scala3.std.History#duplicate:call

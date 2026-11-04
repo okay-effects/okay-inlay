@@ -1,8 +1,11 @@
 symdex.Tools.tokens:call
+symdex.Tools.lean:call
 symdex.Scip.descriptor:call
 symdex.Scip.descriptor:length
 symdex.Symbols.show:call
 symdex.Symbols.show:length
+symdex.Range#covers:call
+symdex.Range#covers:not
 symdex.Symdex.rootOf:call
 symdex.Symbols.names:call
 symdex.Symbols.names:size
@@ -11,11 +14,15 @@ symdex.Symbols.name:call
 symdex.Symbols.name:length
 symdex.Symbols.isLocal:call
 symdex.Symbols.isLocal:not
+symdex.Equivalence.verdict:call
 symdex.Equivalence.verdict:right
+symdex.Info#kindName:call
+symdex.Info#kindName:length
 symdex.Hook.digestOf:call
 symdex.Hook.digestOf:length
 symdex.CodeFacts.relations:call
 symdex.CodeFacts.relations:length
+symdex.CodeFacts.prelude:call
 symdex.Info.kindNames:call
 symdex.Info.kindNames:size
 symdex.Info.kindNames:empty
@@ -25,6 +32,8 @@ symdex.Tools.specs:empty
 symdex.CodeFacts.seeded:call
 symdex.CodeFacts.seeded:size
 symdex.CodeFacts.seeded:empty
+symdex.Info#isGiven:call
+symdex.Info#isGiven:not
 symdex.Archive.id:call
 symdex.Archive.id:length
 symdex.Info.describe:call
@@ -40,5 +49,7 @@ symdex.Tools.serving:size
 symdex.Tools.serving:empty
 symdex.Equivalence.checkSource:call
 symdex.Equivalence.checkSource:length
+symdex.Info#is:call
+symdex.Info#is:not
 symdex.Equivalence.definitionIn:call
 symdex.Equivalence.definitionIn:right

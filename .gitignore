@@ -3,3 +3,4 @@ target/
 .scala-build/
 .idea/
 web/page/main.js
+bench/forge/*.safetensors
