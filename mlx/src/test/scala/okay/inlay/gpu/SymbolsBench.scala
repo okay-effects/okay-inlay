@@ -64,7 +64,7 @@ class SymbolsBench extends munit.FunSuite:
     val (_, out) = sh("scala-cli", "run", "--server=false", "-S", "3.9.0", "--classpath", cp, dir.toString)
     out.linesIterator.exists(_.trim == "PASS")
 
-  private def sh(cmd: String*): (Int, String) =
+  def sh(cmd: String*): (Int, String) =
     val p = ProcessBuilder(cmd*).redirectErrorStream(true).start()
     val out = String(p.getInputStream.readAllBytes)
     (p.waitFor(), out)
@@ -85,7 +85,7 @@ class SymbolsBench extends munit.FunSuite:
     val refs = Ref.findAllMatchIn(code).map(m => (m.group(1), m.group(2))).filter((o, _) => ms.contains(o)).toVector
     (refs.size, refs.filterNot((o, x) => ms(o)(x)).map((o, x) => s"$o.$x"))
 
-  private def code(answer: String): String =
+  def code(answer: String): String =
     val block = "(?s)```(?:scala)?\\n(.*?)(```|$)".r.findFirstMatchIn(answer).map(_.group(1)).getOrElse(answer)
     block.linesIterator.filterNot(_.trim.startsWith("package ")).mkString("\n")
 
@@ -154,21 +154,24 @@ class SymbolsBench extends munit.FunSuite:
       else common.get(n).map(q => s"Hint: import $q")
     }.mkString("\n")
 
+  /** each task's reference solution: the API itself, called */
+  val references = Vector(
+    """def findTotal(text: String): Either[String, String] = Equivalence.definitionIn(text, "Orders", "total")""",
+    "def imports(text: String): Vector[String] = Equivalence.header(text)",
+    "def isImpure(symbol: String): Boolean = Equivalence.impure.exists(symbol.startsWith)",
+    "def sameBehaviour(out: String): Boolean = Equivalence.verdict(out).exists(_.equivalent)",
+    """def relationNames: List[String] = CodeFacts.relations.split(", ").map(_.takeWhile(_ != '(').trim).toList""",
+    "def needsSeed(relation: String): Boolean = CodeFacts.seeded(relation)",
+    """def listTmp(): Either[String, Ran] = Exec.process(List("ls"), java.nio.file.Path.of("/tmp"), 5000)""",
+    "def classesOf(root: java.nio.file.Path): java.nio.file.Path = Tasty.classDirOf(root)",
+    "def generatorsSize: Int = Equivalence.checkSource.length",
+    """def name: String = "exists"""")
+
   test("the checks: the reference solutions behave, a wrong one does not"):
     assume(sys.env.contains("SYMBOLS"), "SYMBOLS=1 to run")
     val cp = java.nio.file.Files.readString(java.nio.file.Path.of(sys.env.getOrElse("SYMDEX_CP", "/tmp/symdex-cp.txt")))
       .trim
-    val refs = Vector(
-      """def findTotal(text: String): Either[String, String] = Equivalence.definitionIn(text, "Orders", "total")""",
-      "def imports(text: String): Vector[String] = Equivalence.header(text)",
-      "def isImpure(symbol: String): Boolean = Equivalence.impure.exists(symbol.startsWith)",
-      "def sameBehaviour(out: String): Boolean = Equivalence.verdict(out).exists(_.equivalent)",
-      """def relationNames: List[String] = CodeFacts.relations.split(", ").map(_.takeWhile(_ != '(').trim).toList""",
-      "def needsSeed(relation: String): Boolean = CodeFacts.seeded(relation)",
-      """def listTmp(): Either[String, Ran] = Exec.process(List("ls"), java.nio.file.Path.of("/tmp"), 5000)""",
-      "def classesOf(root: java.nio.file.Path): java.nio.file.Path = Tasty.classDirOf(root)",
-      "def generatorsSize: Int = Equivalence.checkSource.length",
-      """def name: String = "exists"""")
+    val refs = references
     for (r, i) <- refs.zipWithIndex do assert(behaves(r, checks(i), cp), s"reference ${i + 1} fails its check")
     assert(!behaves("def isImpure(symbol: String): Boolean = Equivalence.impure.exists(symbol.endsWith)", checks(2),
       cp), "a wrong one passes")
@@ -214,9 +217,12 @@ class SymbolsBench extends munit.FunSuite:
         "imported). " + task + knowledge + (if best then " Your definition goes in your own code, outside symdex: " +
           "call symdex's members, do not reimplement them, and declare no object or class." else "") +
         " Reply with one ```scala code block holding only the definition, no explanation."))
+      // "+tests": a definition that compiles but fails its check is sent back with the check, as a failing test
+      val tested = arm.contains("tests")
       var result: (String, Boolean, String) = ("", false, "")
+      var passed = false
       var round = 0
-      while round < rounds && !result._2 do
+      while round < rounds && !(if tested then passed else result._2) do
         round += 1
         val prompt = chat.prompt(messages, Nil, Map("enable_thinking" -> best))
         val s = Session(model, prompt, if best then 3000 else 400, chat.stops,
@@ -227,9 +233,13 @@ class SymbolsBench extends munit.FunSuite:
         val c = code(answer)
         val (ok, first, errors) = compiles(c, cp)
         result = (c, ok, first)
+        passed = ok && tested && behaves(c, checks(i), cp)
         if !ok then messages = messages :+ msg("assistant", answer) :+ msg("user",
           s"It does not compile:\n$errors\n${if best then hints(errors, ms) else ""}\nFix it. Reply with one " +
             "```scala code block holding only the definition.")
+        else if tested && !passed then messages = messages :+ msg("assistant", answer) :+ msg("user",
+          s"It compiles, but this test fails (it must be true):\n```scala\n${checks(i)}\n```\nFix it. Reply with " +
+            "one ```scala code block holding only the definition.")
       val (c, ok, err) = result
       val (refs, bad) = invented(c, ms)
       val right = ok && behaves(c, checks(i), cp)
