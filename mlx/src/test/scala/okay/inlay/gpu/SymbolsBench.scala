@@ -42,7 +42,8 @@ class SymbolsBench extends munit.FunSuite:
 
   /** symdex's members: one Datalog query over its index */
   def members(): Map[String, Set[String]] =
-    val (_, out) = sh(s"$symdexRoot/target/symdex/bin/symdex", "query", "--root", symdexRoot, "goal=named(S, N)", "limit=100000",
+    val (_, out) = sh(s"$symdexRoot/target/symdex/bin/symdex", "query", "--root", symdexRoot, "goal=named(S, N)",
+      "limit=100000",
       "format=json")
     val j = okay.effects.json.Json.fromText(out.linesIterator.find(_.startsWith("{")).get)
     val named = j("answers").list.map(a => (a("S").string, a("N").string)).filter(_._1.startsWith("symdex/"))
@@ -80,7 +81,8 @@ class SymbolsBench extends munit.FunSuite:
     source(owner).fold("") { text =>
       val lines = text.linesIterator.toVector
       val names = ms.getOrElse(owner, Set.empty)
-      val Decl = ("""^\s*((?:final |override |lazy |inline )*(?:def|val|var|case class|class|enum|object|trait|type)""" +
+      val Decl = ("""^\s*((?:final |override |lazy |inline )*""" +
+        """(?:def|val|var|case class|class|enum|object|trait|type)""" +
         """\s+([A-Za-z_][\w$]*)).*""").r
       lines.indices.flatMap { i =>
         lines(i) match
@@ -102,7 +104,8 @@ class SymbolsBench extends munit.FunSuite:
   def usages(owner: String): String =
     val (_, out) = sh("grep", "-rhE", s"\\b$owner\\.[a-z]", s"$symdexRoot/src/main/scala/symdex",
       "--include=*.scala")
-    out.linesIterator.map(_.trim).filterNot(l => l.startsWith("*") || l.startsWith("//") || l.contains(s"object $owner"))
+    out.linesIterator.map(_.trim)
+      .filterNot(l => l.startsWith("*") || l.startsWith("//") || l.contains(s"object $owner"))
       .filter(_.length < 140).toVector.distinct.take(4).mkString("\n")
 
   test("Qwen on symdex's API: knowledge in the prompt, the compiler's feedback, the mask"):
@@ -131,7 +134,8 @@ class SymbolsBench extends munit.FunSuite:
       val owner = "`([A-Z]\\w*)`".r.findFirstMatchIn(task).map(_.group(1)).getOrElse("")
       val knowledge = arm match
         case "free" | "held" => ""
-        case "outline" | "outline+held" => s" Its members: ${ms.getOrElse(owner, Set.empty).toSeq.sorted.mkString(", ")}."
+        case "outline" | "outline+held" =>
+          s" Its members: ${ms.getOrElse(owner, Set.empty).toSeq.sorted.mkString(", ")}."
         case "sigs" => s"\n\n`$owner`'s public API:\n${signatures(owner, ms)}\n"
         case _ => s"\n\n`$owner`'s public API:\n${signatures(owner, ms)}\n\nHow symdex calls it:\n${usages(owner)}\n"
       val held = arm.endsWith("held")
