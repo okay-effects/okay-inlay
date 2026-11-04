@@ -57,5 +57,7 @@ The embedding gives each position its inputs (the token as a `Cat`, its position
   4. rules: a small state machine (Cek.sc's style), compiled into AND-neurons.
 - The law holds for every program on hundreds of random inputs; a field's write-twice refused by the check.
 
+Done 2026-11-04: v0 as stated — `LawSuite`, the law held on every program at the first run.
+
 Next (v1): `Count` (selector width, CountJoin.sc), numeric fields, the allowed set as output and the `Port` handler
 — then the quote program run as weights == mlx-scala's `Quote` on every step (specs/quotes.md stage b).
