@@ -28,3 +28,24 @@ the prompt (the model must recall or guess); Qwen3-4B (and 35B) free and under `
 references (`Owner.x`, x not a member — target 0 held), how often the port overrode the model's first choice, and
 whether the code compiles against symdex's classpath (scala-cli) — the end that matters: real names with wrong
 arguments still fail, so the compile rate says how far names alone go.
+
+## First measure (2026-11-04, Qwen3-4B, 10 tasks, `SymbolsBench`, bench/symbols/history.tsv)
+
+| arm | symdex member references | invented | compile |
+|---|---|---|---|
+| free | 3 | 3 (`Equivalence.impureSymbols`, `Exec.runProcess`, `Equivalence.generators`) | 5 of 10 |
+| held (`Names`) | 2 | 0 | 5 of 10 |
+
+- **Free, every symdex member the model named was invented** — the problem is real.
+- **Held, the mask removed them but did not fix the code**, and showed how a mask alone derails (inlay.md §3):
+  wanting `impureSymbols`, the model got the real `impure` (even right: `Equivalence.impure.exists(…)` compiles) and
+  then wrote its own rest anyway — `Equivalence.impure Symbols`; refused `.generators`, it dropped the dot —
+  `Equivalence generators` (an infix the mask does not see). "0 invented" is partly cosmetic.
+- The five that compile did not touch symdex at all (the model wrote the logic itself); the three that used it fail
+  free and held alike. Names are not the API: signatures and types are what the model lacks.
+- The 100-answer default of symdex's `query` hid most members at first (21 owners); `limit=100000` gives 76 owners,
+  582 members.
+
+Next: (1) choose the member WHOLE, by the model's own scores over the members' full token sequences, then force it
+— not prefix by prefix; (2) close the escapes (the dot dropped, a name glued after a member); (3) the fair arm: the
+members (or signatures) in the prompt, free and held — the mask as a guarantee on top of knowledge, not a substitute.
