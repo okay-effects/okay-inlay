@@ -47,8 +47,11 @@ moves; the mask: 0 guesses against the hints, 0 invented words.
   ask in both orders, scores summed over their spreads) reads 1,230 unseen-phrasing sentences at 100%, the closure
   exact 6/6 at n = 15..100 where the model alone is 3–5/6; cycles 8/8, attribution 5/5. Fork (i) of §10 passed.
 
-- [ ] **browser-smoke** — the machines on Scala.js (specs/bridge.md §11): `Forward` with `Closure` in a page, equal
-  to the JVM on the same inputs; then the WebGPU handler and the LLM runtime choice (WebLLM first). — Datalog with a neural relation in weights (specs/bridge.md §7; BACKLOG 1): sentences stating
+- [x] **browser-smoke** (2026-11-04): `Closure` run by `Forward` in a page on Scala.js, exact offline with no model (web/).
+
+- [~] **bridge-2** (first run 2026-11-04, specs/bridge.md §12): inconclusive — the `Names` mask does not hold on Qwen3.5-4B
+  (held still invents 8–15), so the mask-in-the-loss arm saw no mask; next a unit law for `Names` on Qwen3.5's
+  tokenizer, then the run again, alone on the GPU. — Datalog with a neural relation in weights (specs/bridge.md §7; BACKLOG 1): sentences stating
   relations (50–200, 5–10 hops), entities by exact lookup on names, the relation read by Probe and by Ask (yes/no
   logits, no training), the closure by `Datalog.sc`'s machine in the DSL, every derived fact attributed to its
   readings; arms alone / thinking / bridge / gold; contradictions with the two sentences to blame. — count with a neural predicate (specs/bridge.md §4): a probe E on Qwen3-4B's hidden states (the

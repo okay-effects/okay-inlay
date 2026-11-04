@@ -282,3 +282,26 @@ machines it becomes a small model that is exact where big ones are not — the t
 3. **incidents** in okay-reliability's serverless web client (§7's pack on logs; the generator labels the reader).
 First the riskiest step: the machines on Scala.js in a browser (a day's smoke test with `Closure`), then the LLM
 runtime choice.
+
+## 12. bridge-2, first run (2026-11-04) — inconclusive, and a finding about the mask
+
+`MaskBench`: Qwen3.5-4B, SymbolsBench (10 tasks), LoRA (rank 8, o/out/down, 2 epochs on 25 generated tasks)
+plain and with the `Names` mask IN THE LOSS (the cross-entropy at each answer token over the tokens the mask allows
+there). The GPU was shared with another training (okay-go's Distill) for the first two arms — 4,805 s for the plain
+LoRA against 572 s for the masked one alone — and two earlier runs died of "innocent victim" GPU errors for the same
+reason. Never run two MLX jobs at once.
+
+| arm | free: invented, compile, behave | held (mask on at generation): invented, compile, behave |
+|---|---|---|
+| as it is | 8, 7, 5 | 8, 7, 5 |
+| LoRA plain | 11, 6, 6 | 12, 6, 6 |
+| LoRA under the mask | 11, 6, 6 | 15, 6, 6 |
+
+- **The mask does not hold on Qwen3.5-4B**: "held" still invents 8–15 members, where on Qwen3-4B it held at 0
+  (specs/symbols.md). Either `Names` does not fire on Qwen3.5's tokenization (the port reads the decoded text; the
+  `texts` map comes from the tokenizer) or `invented` counts what the mask does not cover. Until the mask holds, the
+  mask-in-the-loss arm cannot show anything: its loss equals the plain one (0.0155 → 0.0001 both) because the mask
+  was rarely active. **Next: a unit law for `Names` on Qwen3.5's tokenizer (an invented member under the port must
+  be impossible), then bridge-2 again.**
+- LoRA on 25 tasks moved behave 5 → 6 and invented 8 → 11: the small training set teaches the shape of the answer
+  more than the API — as okay-forge found.
