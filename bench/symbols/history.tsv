@@ -209,3 +209,23 @@ when	model	arm	task	refs	invented	compiles	error	code
 2026-11-04T10:17:15	mlx-community/Qwen3-4B-4bit	best+held	9	1		right		def generatorsSize: Int = Equivalence.checkSource.length
 2026-11-04T10:17:15	mlx-community/Qwen3-4B-4bit	best	10	0		right		// Check if a path exists, with effect\ndef name: String = "exists"
 2026-11-04T10:17:15	mlx-community/Qwen3-4B-4bit	best+held	10	0		right		// Check if a path exists, performing the effect.\ndef name: String = "exists"
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	1	1		right		def findTotal(text: String): Either[String, String] = Equivalence.definitionIn(text, "Orders", "total")
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	1	1		right		def findTotal(text: String): Either[String, String] = Equivalence.definitionIn(text, "Orders", "total")
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	2	1		false	-- [E008] Not Found Error: Check.scala:8:18 	object Equivalence {\n  def imports(text: String): Vector[String] = {\n    Equivalence.header(text).filter(_.startsWith("import"))\n  }\n}
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	2	1		false	-- [E008] Not Found Error: Check.scala:8:18 	object Equivalence {\n  def imports(text: String): Vector[String] = {\n    Equivalence.header(text).filter(_.startsWith("import"))\n  }\n}
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	3	1		right		def isImpure(symbol: String): Boolean = Equivalence.impure.exists(s => symbol.startsWith(s))
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	3	1		right		def isImpure(symbol: String): Boolean = Equivalence.impure.exists(s => symbol.startsWith(s))
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	4	0		true		object Equivalence {\n  def sameBehaviour(out: String): Boolean = {\n    val lines = out.split("\n")\n    val lastLine = lines.last\n    lastLine.contains("Equivalent")\n  }\n}
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	4	0		false	-- [E008] Not Found Error: Check.scala:6:20 	import scala.util.Json\n\nobject Equivalence {\n  def sameBehaviour(out: String): Boolean = {\n    try {\n      val json = Json.parse(out)\n      (json \ "equivalent").extract[Boolean]\n    } catch {\n      case e: Exception => false\n    }\n  }\n}
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	5	1		true		def relationNames: List[String] = {\n  CodeFacts.relations.split(",").map { part =>\n    part.split("(", 2).head\n  }.toList\n}
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	5	1		right		def relationNames: List[String] = CodeFacts.relations.split(", ").map { part =>\n  part.takeWhile(_ != '(').trim\n}.toList
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	6	1		right		def needsSeed(relation: String): Boolean = CodeFacts.seeded.contains(relation)
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	6	1		right		def needsSeed(relation: String): Boolean = CodeFacts.seeded.contains(relation)
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	7	1		right		import java.nio.file.Path\n\ndef listTmp(): Either[String, Ran] = Exec.process(List("ls"), Path.of(sys.props("java.io.tmpdir")), 5000)
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	7	1		right		import java.nio.file.Path\n\ndef listTmp(): Either[String, Ran] = Exec.process(List("ls"), Path.of(sys.props("java.io.tmpdir")), 5000)
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	8	1		right		def classesOf(root: java.nio.file.Path): java.nio.file.Path = Tasty.classDirOf(root)
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	8	1		right		def classesOf(root: java.nio.file.Path): java.nio.file.Path = Tasty.classDirOf(root)
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	9	1		right		def generatorsSize: Int = Equivalence.checkSource.length
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	9	1		right		def generatorsSize: Int = Equivalence.checkSource.length
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best	10	0		right		// Check if a path exists, with effect\ndef name: String = "exists"
+2026-11-04T10:45:47	mlx-community/Qwen3-4B-4bit	best+tests	10	0		right		// Check if a path exists, with effect\ndef name: String = "exists"
