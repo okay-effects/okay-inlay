@@ -25,13 +25,18 @@ final class Refine(model: Adaptable, chat: Chat):
       "declare no object or class. Reply with one ```scala code block holding only the definition, no explanation.",
       Map("enable_thinking" -> false))
 
+  /** a general task's prompt: no project, no API */
+  def general(t: Task): Array[Int] =
+    chat.ask(s"Write `${t.signature}` in Scala 3: ${t.text}. Reply with one ```scala code block holding only the " +
+      "definition, no explanation.", Map("enable_thinking" -> false))
+
   def code(answer: String): String =
     val a = answer.split("</think>").last
     "(?s)```(?:scala)?\\n(.*?)(```|$)".r.findFirstMatchIn(a).map(_.group(1)).getOrElse(a).linesIterator
       .filterNot(_.trim.startsWith("package ")).mkString("\n").trim
 
   def answer(src: Source, t: Task, maxTokens: Int = 400): String =
-    val s = Session(model, prompt(src, t), maxTokens, chat.stops)
+    val s = Session(model, if t.kind == "general" then general(t) else prompt(src, t), maxTokens, chat.stops)
     try tok.decode(Iterator.continually(s.next()).takeWhile(_.isDefined).flatten.toVector)
     finally s.close()
 

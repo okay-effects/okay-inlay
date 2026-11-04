@@ -66,7 +66,7 @@ final class Project(val root: Path, val classpath: String, symdex: String):
   /** a file's imports, as a program beside it needs them */
   def imports(file: String): Vector[String] =
     val p = root.resolve(file)
-    if !Files.exists(p) then Vector.empty
+    if file.isEmpty || !Files.isRegularFile(p) then Vector.empty
     else Files.readString(p).linesIterator.map(_.trim).filter(_.startsWith("import ")).toVector
 
   /** up to `n` real calls of `Owner.member` in the project's sources (but its own declaration) */

@@ -56,9 +56,12 @@ class TransferBench extends munit.FunSuite:
       val t0 = System.nanoTime
       val res = r.attempts(evalSrc, evalTasks)
       val (c, b) = (res.count(_._3.compiles), res.count(_._3.behaves))
+      // the regression set: general Scala, no project
+      val gen = r.attempts(evalSrc, General.tasks).count(_._3.behaves)
       val secs = (System.nanoTime - t0) / 1e9
-      println(f"$arm: $c compile, $b behave of ${evalTasks.size} ($secs%.0f s)")
-      Files.writeString(history, Seq(stamp, repo, arm, evalTasks.size, c, b, f"$secs%.0f", note).mkString("\t") + "\n",
+      println(f"$arm: $c compile, $b behave of ${evalTasks.size}; general $gen of ${General.tasks.size} ($secs%.0f s)")
+      Files.writeString(history, Seq(stamp, repo, arm, evalTasks.size, c, b, f"$secs%.0f",
+        s"general $gen/${General.tasks.size}; $note").mkString("\t") + "\n",
         java.nio.file.StandardOpenOption.APPEND)
       (c, b)
     evaluate("base")
