@@ -15,9 +15,17 @@ class TransferBench extends munit.FunSuite:
   private val check = Files.readString(Path.of(s"$home/work/my/symdex/src/main/resources/symdex/Check.scala.txt"))
   private val bench = Path.of("../bench/refine").toAbsolutePath.normalize
 
-  def source(name: String, root: String, cp: String, scala: String): Source =
-    val p = Project(Path.of(root), Files.readString(Path.of(cp)).trim, symdexBin)
-    Source(name, p, Verify(p, check, scala))
+  /** a project made ready (Prepare: cloned, compiled with SemanticDB, its classpath), its Scala version read from it */
+  def source(name: String, module: String): Option[Source] =
+    Prepare(name, Path.of(s"$home/work/my/$name"), module) match
+      case Left(why) =>
+        println(s"  left out: $why")
+        None
+      case Right((root, cpFile)) =>
+        val cp = Files.readString(cpFile).trim
+        val scala = """scala3-library_3/([0-9.]+)/""".r.findFirstMatchIn(cp).map(_.group(1)).getOrElse("3.3.8")
+        val p = Project(root, cp, symdexBin)
+        Some(Source(name, p, Verify(p, check, scala)))
 
   /** the tasks whose reference compiles and equals itself (kept in bench/refine/usable-<name>.txt) */
   def usable(src: Source): Vector[Task] =
@@ -38,10 +46,10 @@ class TransferBench extends munit.FunSuite:
     val repo = sys.env.getOrElse("REFINE_MODEL", "mlx-community/Qwen3-4B-4bit")
     val dir = Models.snapshot(repo)
     assume(dir.isDefined, s"$repo is not in the HuggingFace cache")
-    val evalSrc = source("symdex", s"$home/work/my/symdex", "/tmp/symdex-cp.txt", "3.9.0")
-    val trainSrcs = Vector(
-      source("okay-scala", "/tmp/refine-projects/okay-scala", "/tmp/refine-projects/okay-scala.cp", "3.3.8"),
-      source("okay-datalog", "/tmp/refine-projects/okay-datalog", "/tmp/refine-projects/okay-datalog.cp", "3.3.8"))
+    val evalSrc = source("symdex", "").get
+    val trainSrcs = Vector("okay-scala" -> "coreJVM", "okay-datalog" -> "coreJVM", "okay-simple" -> "effects",
+      "okay-store" -> "core", "okay-proof" -> "proofJVM", "okay-guard" -> "policyJVM", "okay-ui" -> "coreJVM",
+      "okay-llm" -> "coreJVM", "okay-mcp" -> "core").flatMap(source)
     val evalTasks = usable(evalSrc)
     val train = trainSrcs.map(s => s -> usable(s))
     println(s"eval: ${evalTasks.size} symdex tasks; train: " + train.map((s, t) => s"${s.name} ${t.size}").mkString(", "))
