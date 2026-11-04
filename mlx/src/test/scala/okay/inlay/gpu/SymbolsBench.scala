@@ -35,6 +35,35 @@ class SymbolsBench extends munit.FunSuite:
     "symdex's object `Disk` has an operation telling whether a path exists, performed as an effect. Write a " +
       "one-line comment naming that operation, then `def name: String` returning its name as a string.")
 
+  /** each task's behaviour check: its definition against the API itself on inputs (true: right) */
+  val checks = Vector(
+    """Seq("object Orders:\n  def total = 1\n  def other = 2\n", "object A:\n  def b = 1\n").forall(t =>
+      Check.findTotal(t) == Equivalence.definitionIn(t, "Orders", "total"))""",
+    """Seq("package a\nimport b.c\nobject X", "val x = 1").forall(t => Check.imports(t) == Equivalence.header(t))""",
+    """Seq("java/io/File#", "scala/List.", "scala/Predef.println().").forall(s =>
+      Check.isImpure(s) == Equivalence.impure.exists(s.startsWith))""",
+    """Seq("{\"equivalent\":true}", "{\"equivalent\":false,\"input\":\"1\"}", "nothing").forall(o =>
+      Check.sameBehaviour(o) == Equivalence.verdict(o).exists(_.equivalent))""",
+    """Check.relationNames == CodeFacts.relations.split(", ").map(_.takeWhile(_ != '(').trim).toList""",
+    """Seq("callers", "defined", "affects").forall(r => Check.needsSeed(r) == CodeFacts.seeded(r))""",
+    """Check.listTmp().exists(_.code == 0)""",
+    """Seq("/tmp/x/target/scala-3.9.0/meta").map(java.nio.file.Path.of(_)).forall(p =>
+      Check.classesOf(p) == Tasty.classDirOf(p))""",
+    """Check.generatorsSize == Equivalence.checkSource.length""",
+    """Check.name == "exists"""")
+
+  /** whether the definition behaves: its check run against symdex's classpath */
+  def behaves(code: String, check: String, cp: String): Boolean =
+    val dir = java.nio.file.Files.createTempDirectory("behaves")
+    val body = code.linesIterator.map("  " + _).mkString("\n")
+    java.nio.file.Files.writeString(dir.resolve("Check.scala"),
+      s"package benchcheck\n\nimport symdex.*\n\nobject Check:\n$body\n")
+    java.nio.file.Files.writeString(dir.resolve("Main.scala"), s"package benchcheck\n\nimport symdex.*\n\n" +
+      s"@main def benchMain(): Unit = println(if (try { $check } catch { case _: Throwable => false }) \"PASS\" " +
+      "else \"FAIL\")\n")
+    val (_, out) = sh("scala-cli", "run", "--server=false", "-S", "3.9.0", "--classpath", cp, dir.toString)
+    out.linesIterator.exists(_.trim == "PASS")
+
   private def sh(cmd: String*): (Int, String) =
     val p = ProcessBuilder(cmd*).redirectErrorStream(true).start()
     val out = String(p.getInputStream.readAllBytes)
@@ -76,37 +105,73 @@ class SymbolsBench extends munit.FunSuite:
     val p = java.nio.file.Path.of(s"$symdexRoot/src/main/scala/symdex/$owner.scala")
     if java.nio.file.Files.exists(p) then Some(java.nio.file.Files.readString(p)) else None
 
-  /** the owner's public members as signatures (the body cut at ` =`), each with its doc comment's first line */
-  def signatures(owner: String, ms: Map[String, Set[String]]): String =
-    source(owner).fold("") { text =>
+  /** the owner's public members as they are called (`Owner.name(…): T`, the body cut at ` =`), each with its doc
+   * comment's first line: (name, the line) */
+  def entries(owner: String, ms: Map[String, Set[String]]): Vector[(String, String)] =
+    source(owner).fold(Vector.empty) { text =>
       val lines = text.linesIterator.toVector
       val names = ms.getOrElse(owner, Set.empty)
-      val Decl = ("""^\s*((?:final |override |lazy |inline )*""" +
-        """(?:def|val|var|case class|class|enum|object|trait|type)""" +
-        """\s+([A-Za-z_][\w$]*)).*""").r
+      val keyword = """^\s*(?:(?:final |override |lazy |inline )*""" +
+        """(?:def|val|var|case class|class|enum|object|trait|type)\s+)"""
+      val Decl = (keyword + """([A-Za-z_][\w$]*).*""").r
       lines.indices.flatMap { i =>
         lines(i) match
-          case Decl(_, name) if names(name) && !lines(i).contains("private") =>
-            val sig0 = lines(i).trim.replaceAll("""\s=\s*$""", "").replaceAll(""" = .*$""", "").replaceAll(":$", "")
-            // as it is called: `Owner.name(…)`, the keywords dropped
-            val keyword = """^(?:(?:final |override |lazy |inline )*""" +
-              """(?:def|val|var|case class|class|enum|object|trait|type)\s+)"""
-            val sig = sig0.replaceFirst(keyword, s"$owner.")
-            // the doc comment just above: its first line of text
+          case Decl(name) if names(name) && !lines(i).contains("private") =>
+            val sig0 = lines(i).replaceAll("""\s=\s*$""", "").replaceAll(""" = .*$""", "").replaceAll(":$", "")
+            val sig = sig0.replaceFirst(keyword, s"$owner.").trim
             val above = lines.take(i).reverse.takeWhile(l => l.trim.startsWith("*") || l.trim.startsWith("/**"))
             val doc = above.reverse.headOption.map(_.trim.stripPrefix("/**").stripSuffix("*/").trim).filter(_.nonEmpty)
-            Some(s"  $sig" + doc.fold("")(d => s"   // $d"))
+            Some(name -> (s"  $sig" + doc.fold("")(d => s"   // $d")))
           case _ => None
-      }.distinct.mkString("\n")
+      }.toVector.distinctBy(_._1)
     }
 
-  /** up to four real calls of the owner's members elsewhere in symdex */
-  def usages(owner: String): String =
+  private def words(s: String): Set[String] =
+    s.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase.split("[^a-z]+").filter(_.length > 2).toSet
+
+  /** the members most like the task (their names' and docs' words shared with it), three at most */
+  def focus(task: String, es: Vector[(String, String)]): Vector[(String, String)] =
+    val t = words(task)
+    es.map(e => e -> (words(e._1) ++ words(e._2)).count(t)).filter(_._2 > 0).sortBy(-_._2).take(3).map(_._1)
+
+  /** up to four real calls of the owner's members (`only`, if given) elsewhere in symdex */
+  def usages(owner: String, only: Set[String] = Set.empty): String =
     val (_, out) = sh("grep", "-rhE", s"\\b$owner\\.[a-z]", s"$symdexRoot/src/main/scala/symdex",
       "--include=*.scala")
     out.linesIterator.map(_.trim)
       .filterNot(l => l.startsWith("*") || l.startsWith("//") || l.contains(s"object $owner"))
+      .filter(l => only.isEmpty || only.exists(m => l.contains(s"$owner.$m")))
       .filter(_.length < 140).toVector.distinct.take(4).mkString("\n")
+
+  /** what to import for a name the compiler did not find: symdex's own (already imported), or a common one */
+  def hints(errors: String, ms: Map[String, Set[String]]): String =
+    val common = Map("Path" -> "java.nio.file.Path", "Paths" -> "java.nio.file.Paths",
+      "Files" -> "java.nio.file.Files",
+      "Duration" -> "scala.concurrent.duration.Duration",
+      "FiniteDuration" -> "scala.concurrent.duration.FiniteDuration")
+    "Not found: (?:type )?([A-Z]\\w*)".r.findAllMatchIn(errors).map(_.group(1)).toVector.distinct.flatMap { n =>
+      if ms.contains(n) then Some(s"Hint: $n is symdex's, already imported: call it as $n.member.")
+      else common.get(n).map(q => s"Hint: import $q")
+    }.mkString("\n")
+
+  test("the checks: the reference solutions behave, a wrong one does not"):
+    assume(sys.env.contains("SYMBOLS"), "SYMBOLS=1 to run")
+    val cp = java.nio.file.Files.readString(java.nio.file.Path.of(sys.env.getOrElse("SYMDEX_CP", "/tmp/symdex-cp.txt")))
+      .trim
+    val refs = Vector(
+      """def findTotal(text: String): Either[String, String] = Equivalence.definitionIn(text, "Orders", "total")""",
+      "def imports(text: String): Vector[String] = Equivalence.header(text)",
+      "def isImpure(symbol: String): Boolean = Equivalence.impure.exists(symbol.startsWith)",
+      "def sameBehaviour(out: String): Boolean = Equivalence.verdict(out).exists(_.equivalent)",
+      """def relationNames: List[String] = CodeFacts.relations.split(", ").map(_.takeWhile(_ != '(').trim).toList""",
+      "def needsSeed(relation: String): Boolean = CodeFacts.seeded(relation)",
+      """def listTmp(): Either[String, Ran] = Exec.process(List("ls"), java.nio.file.Path.of("/tmp"), 5000)""",
+      "def classesOf(root: java.nio.file.Path): java.nio.file.Path = Tasty.classDirOf(root)",
+      "def generatorsSize: Int = Equivalence.checkSource.length",
+      """def name: String = "exists"""")
+    for (r, i) <- refs.zipWithIndex do assert(behaves(r, checks(i), cp), s"reference ${i + 1} fails its check")
+    assert(!behaves("def isImpure(symbol: String): Boolean = Equivalence.impure.exists(symbol.endsWith)", checks(2),
+      cp), "a wrong one passes")
 
   test("Qwen on symdex's API: knowledge in the prompt, the compiler's feedback, the mask"):
     assume(sys.env.contains("SYMBOLS"), "SYMBOLS=1 to run")
@@ -115,9 +180,8 @@ class SymbolsBench extends munit.FunSuite:
     assume(dir.isDefined, s"$repo is not in the HuggingFace cache")
     val cp = java.nio.file.Files.readString(java.nio.file.Path.of(sys.env.getOrElse("SYMDEX_CP", "/tmp/symdex-cp.txt")))
       .trim
-    val arms = sys.env.getOrElse("SYMBOLS_ARMS", "sigs,usage,loop,loop+held").split(",").toVector
+    val arms = sys.env.getOrElse("SYMBOLS_ARMS", "loop,best,best+held").split(",").toVector
     val ms = members()
-    println(s"Equivalence's API as given:\n${signatures("Equivalence", ms)}\nits calls:\n${usages("Equivalence")}")
     println(s"symdex: ${ms.size} owners, ${ms.values.map(_.size).sum} members; arms ${arms.mkString(" ")}")
     val chat = Chat.load(dir.get)
     val model = Model.load(dir.get, mapped = true)
@@ -129,17 +193,23 @@ class SymbolsBench extends munit.FunSuite:
     def msg(role: String, content: String) =
       okay.effects.json.Json.obj("role" -> okay.effects.json.Json.Str(role),
         "content" -> okay.effects.json.Json.Str(content))
-    var totals = Map.empty[String, (Int, Int, Int, Int)]
+    var totals = Map.empty[String, (Int, Int, Int, Int, Int)]
     for (task, i) <- tasks.zipWithIndex; arm <- arms do
       val owner = "`([A-Z]\\w*)`".r.findFirstMatchIn(task).map(_.group(1)).getOrElse("")
+      val es = entries(owner, ms)
+      // "best": the members like the task (else all), their calls, thinking, five rounds with hints
+      val best = arm.startsWith("best")
+      val shown = if best then Some(focus(task, es)).filter(_.nonEmpty).getOrElse(es) else es
       val knowledge = arm match
         case "free" | "held" => ""
-        case "outline" | "outline+held" =>
-          s" Its members: ${ms.getOrElse(owner, Set.empty).toSeq.sorted.mkString(", ")}."
-        case "sigs" => s"\n\n`$owner`'s public API:\n${signatures(owner, ms)}\n"
-        case _ => s"\n\n`$owner`'s public API:\n${signatures(owner, ms)}\n\nHow symdex calls it:\n${usages(owner)}\n"
+        case "outline" | "outline+held" => s" Its members: ${es.map(_._1).sorted.mkString(", ")}."
+        case "sigs" => s"\n\n`$owner`'s public API:\n${shown.map(_._2).mkString("\n")}\n"
+        case _ =>
+          val calls = usages(owner, if best then shown.map(_._1).toSet else Set.empty)
+          s"\n\n`$owner`'s public API${if best then " (what this task needs)" else ""}:\n" +
+            s"${shown.map(_._2).mkString("\n")}\n\nHow symdex calls it:\n$calls\n"
       val held = arm.endsWith("held")
-      val rounds = if arm.startsWith("loop") then 3 else 1
+      val rounds = if best then 5 else if arm.startsWith("loop") then 3 else 1
       var messages = Vector(msg("user", "You write Scala 3 for the project symdex (package `symdex`, already " +
         "imported). " + task + knowledge + " Reply with one ```scala code block holding only the definition, no " +
         "explanation."))
@@ -147,22 +217,28 @@ class SymbolsBench extends munit.FunSuite:
       var round = 0
       while round < rounds && !result._2 do
         round += 1
-        val prompt = chat.prompt(messages, Nil, Map("enable_thinking" -> false))
-        val s = Session(model, prompt, 400, chat.stops, port = if held then Names(tok, ms) else null)
+        val prompt = chat.prompt(messages, Nil, Map("enable_thinking" -> best))
+        val s = Session(model, prompt, if best then 3000 else 400, chat.stops,
+          port = if held then Names(tok, ms) else null)
         val out = tok.decode(Iterator.continually(s.next()).takeWhile(_.isDefined).flatten.toVector)
         s.close()
-        val c = code(out)
+        val answer = out.split("</think>").last
+        val c = code(answer)
         val (ok, first, errors) = compiles(c, cp)
         result = (c, ok, first)
-        if !ok then messages = messages :+ msg("assistant", out) :+ msg("user",
-          s"It does not compile:\n$errors\nFix it. Reply with one ```scala code block holding only the definition.")
+        if !ok then messages = messages :+ msg("assistant", answer) :+ msg("user",
+          s"It does not compile:\n$errors\n${if best then hints(errors, ms) else ""}\nFix it. Reply with one " +
+            "```scala code block holding only the definition.")
       val (c, ok, err) = result
       val (refs, bad) = invented(c, ms)
-      println(s"[${i + 1} $arm, $round round(s)] refs $refs invented ${bad.mkString(", ")} compiles $ok $err\n$c\n")
-      val (r0, b0, k0, n0) = totals.getOrElse(arm, (0, 0, 0, 0))
-      totals += arm -> (r0 + refs, b0 + bad.size, k0 + (if ok then 1 else 0), n0 + round)
-      java.nio.file.Files.writeString(history, Seq(stamp, repo, arm, i + 1, refs, bad.mkString(" "), ok, err,
-        c.replace("\n", "\\n").replace("\t", " ")).mkString("\t") + "\n", java.nio.file.StandardOpenOption.APPEND)
-    for arm <- arms; (r, b, k, n) <- totals.get(arm) do
-      println(s"$arm: $r member references, $b invented, $k of ${tasks.size} compile, $n rounds")
+      val right = ok && behaves(c, checks(i), cp)
+      println(s"[${i + 1} $arm, $round round(s)] refs $refs invented ${bad.mkString(", ")} compiles $ok behaves " +
+        s"$right $err\n$c\n")
+      val (r0, b0, k0, n0, g0) = totals.getOrElse(arm, (0, 0, 0, 0, 0))
+      totals += arm -> (r0 + refs, b0 + bad.size, k0 + (if ok then 1 else 0), n0 + round, g0 + (if right then 1 else 0))
+      java.nio.file.Files.writeString(history, Seq(stamp, repo, arm, i + 1, refs, bad.mkString(" "),
+        if right then "right" else ok.toString, err, c.replace("\n", "\\n").replace("\t", " ")).mkString("\t") + "\n",
+        java.nio.file.StandardOpenOption.APPEND)
+    for arm <- arms; (r, b, k, n, g) <- totals.get(arm) do
+      println(s"$arm: $r member references, $b invented, $k of ${tasks.size} compile, $g behave, $n rounds")
     model.close()
