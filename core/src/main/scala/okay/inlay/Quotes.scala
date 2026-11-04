@@ -89,3 +89,52 @@ object Quotes:
     Program(Seq(tok, src, pos) ++ backs.toSeq.sortBy(_._1).map(_._2),
       Seq(first, second, third) ++ more ++ Seq(windows, induction), maxLen)
 
+
+  /**
+   * THE CHEAP FORM FOR A LARGE VOCABULARY: the token as ±1 bits (`tok`, ⌈log₂ |vocab|⌉ bits) wherever it is compared
+   * or copied, one-hot (`hot`) only where the allowed set is gathered and the markers recognized. `vocab` holds the
+   * markers "[" and "]". Inputs per position: `tok` (the token's index in `vocab`), `hot` (the token), `src`.
+   */
+  def cheapBits(vocab: Vector[String], k: Int, maxLen: Int): Program =
+    val bits = 32 - Integer.numberOfLeadingZeros(maxLen - 1)
+    val idBits = math.max(1, 32 - Integer.numberOfLeadingZeros(vocab.size - 1))
+    val tok = Bits("tok", idBits)
+    val hot = Cat("hot", vocab)
+    val src = Cat("src", Vector("y"))
+    val pos = Builtin.pos(bits)
+    val steps = Iterator.iterate(1)(_ * 2).takeWhile(_ < k).toVector
+    val backs = (1 +: steps).distinct.map(h => h -> Builtin.back(h, bits)).toMap
+    val yn = Vector("y", "n")
+    val (isMark, yes, plain, here) = (Cat("isMark", yn), Cat("yes", yn), Cat("plain", yn), Cat("here", Vector("y")))
+    val kind = Cat("kind", Vector("open", "close"))
+    val prev = (1 to k).map(d => d -> Bits(s"prev$d", idBits)).toMap
+    val (mark, markPos, cur) = (Cat("mark", kind.values), Bits("markPos", bits), Bits("cur", idBits))
+    val copied = Cat("copied", (0 to k).map(_.toString).toVector)
+    val win = (1 until k).map(d => d -> Bits(s"win$d", idBits)).toMap
+    val (inside, allowed) = (Flag("inside"), Many("allowed", vocab))
+    val doubling = steps.map(h => Lookup((1 to h).filter(_ + h <= k).map(e => prev(e + h) -> prev(e)), Seq(backs(h)),
+      Seq(pos)))
+    val first = Layer(heads = Seq(Lookup(Seq(prev(1) -> tok), Seq(backs(1)), Seq(pos))),
+      rules = Seq(Rule(Nil, Seq(Write.To(yes, "y"), Write.To(plain, "n"), Write.To(here, "y"))),
+        Rule(Seq(Guard.Is(hot, "[")), Seq(Write.To(isMark, "y"), Write.To(kind, "open"))),
+        Rule(Seq(Guard.Is(hot, "]")), Seq(Write.To(isMark, "y"), Write.To(kind, "close"))),
+        Rule(Seq(Guard.IsNot(hot, "["), Guard.IsNot(hot, "]")), Seq(Write.To(isMark, "n")))))
+    val second = Layer(heads = doubling.take(1) :+ Lookup(Seq(mark -> kind, markPos -> pos), Seq(yes), Seq(isMark),
+        latest = true),
+      rules = Seq(Rule(Seq(Guard.Is(isMark, "n")), Seq(Write.Copy(cur, tok)))))
+    val third = Layer(heads = doubling.slice(1, 2) :+ Count(copied, Seq(markPos, plain), Seq(markPos, isMark)),
+      rules = Seq(Rule(Seq(Guard.Is(mark, "open")), Seq(Write.Raise(inside)))))
+    val more = doubling.drop(2).map(h => Layer(heads = Seq(h)))
+    val windows = Layer(rules = (1 until k).map(d => Rule((0 to d).map(n => Guard.IsNot(copied, n.toString)),
+      Seq(Write.Copy(win(d), prev(d))))))
+    val induction = Layer(heads = Seq(Lookup(Seq(allowed -> hot), cur +: (1 until k).map(win) :+ here,
+      (1 to k).map(prev) :+ src, all = true, wild = true)))
+    Program(Seq(tok, hot, src, pos) ++ backs.toSeq.sortBy(_._1).map(_._2),
+      Seq(first, second, third) ++ more ++ Seq(windows, induction), maxLen)
+
+  /** a token stream as `cheapBits`'s inputs: each token's index and one-hot, the source positions marked */
+  def bitsInputs(vocab: Vector[String], toks: Vector[String], src: Vector[Boolean]): Vector[Interpret.Record] =
+    toks.zip(src).map { (t, s) =>
+      Map[String, Val]("tok" -> Val.B(Some(vocab.indexOf(t))), "hot" -> Val.C(Some(t))) ++
+        (if s then Map("src" -> Val.C(Some("y"))) else Map.empty)
+    }

@@ -14,10 +14,13 @@ final case class Cat(name: String, values: Vector[String]) extends Field:
     require(i >= 0, s"$name has no value $v")
     i
 
-/** an integer in [0, 2^bits), or none: ±1 per bit (none: zeros) — positions, pointers */
+/** an integer in [0, 2^bits), or none: ±1 per bit and a presence dim, 1 (none: all zeros) — positions, pointers,
+ * the tokens of a large vocabulary. The presence makes "none" linear: a wildcard, a guarded copy */
 final case class Bits(name: String, bits: Int) extends Field:
   require(bits > 0 && bits < 31, s"$name: 1 to 30 bits")
-  def dims: Int = bits
+  def dims: Int = bits + 1
+  /** the presence dim's offset in the field */
+  def present: Int = bits
 
 /** true or false: 1 dim, 1 / 0 */
 final case class Flag(name: String) extends Field:
@@ -61,7 +64,7 @@ enum Guard:
 enum Write:
   case To(field: Cat, value: String)
   case Raise(flag: Flag)
-  case Copy(dst: Cat, src: Cat)
+  case Copy(dst: Field, src: Field)
 
   def target: Field = this match
     case To(f, _) => f
@@ -75,8 +78,8 @@ sealed trait Op
  * A HEAD: each position i attends to the positions j ≤ i (not the start) whose `key` fields equal i's `query` fields,
  * pair by pair, and copies `copy`'s sources there into its destinations. No match: none. Several: one if they agree,
  * else inexact — unless `latest`, the latest match winning. `all`: every match's source value gathered into a
- * `Many` destination (a set, never inexact). `wild`: a query `Cat` field that is none matches any key (its pair
- * skipped; every pair skipped: every position matches).
+ * `Many` destination (a set, never inexact). `wild`: a query field (a `Cat` or `Bits`) that is none matches any key
+ * (its pair skipped; every pair skipped: every position matches).
  */
 final case class Lookup(copy: Seq[(Field, Field)], query: Seq[Field], key: Seq[Field], latest: Boolean = false,
     all: Boolean = false, wild: Boolean = false) extends Head:
@@ -121,8 +124,8 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
       case (Flag(_), Flag(_)) => true
       case (Many(_, x), Many(_, y)) => x == y
       case _ => false
-    for b <- inputs.filter(Builtin.isBuiltin) if (1 << b.dims) < maxLen do
-      out += s"${b.name}: ${b.dims} bits do not reach maxLen $maxLen"
+    for b <- inputs.collect { case b: Bits if Builtin.isBuiltin(b) => b } if (1 << b.bits) < maxLen do
+      out += s"${b.name}: ${b.bits} bits do not reach maxLen $maxLen"
     if inputs.map(_.name).distinct.size != inputs.size then out += "an input given twice"
     for (l, n) <- layers.zipWithIndex do
       def read(f: Field, by: String) =
@@ -153,7 +156,11 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
         r.guards.foreach(g => read(g.reads, "a rule"))
         r.sets.foreach { case Write.Copy(d, s) =>
             read(s, "a rule")
-            if d.values != s.values then out += s"layer $n: ${s.name} copied into ${d.name} of other values"
+            (d, s) match
+              case (Cat(_, x), Cat(_, y)) if x == y => ()
+              case (Bits(_, x), Bits(_, y)) if x == y => ()
+              case _ =>
+                out += s"layer $n: a rule copies ${s.name} into ${d.name}: Cats of the same values or Bits alike"
           case _ => () }
       for w <- ruleWrites do
         if known(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name

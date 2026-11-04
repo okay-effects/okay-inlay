@@ -44,7 +44,7 @@ object Interpret:
    * pairs whose query `Cat` is none */
   def matches(h: Head, rs: Vector[Record], i: Int): Vector[Int] =
     val pairs = h.query.zip(h.key).filterNot { (q, _) =>
-      h.wild && q.isInstanceOf[Cat] && rs(i)(q.name) == Val.C(None)
+      h.wild && (rs(i)(q.name) == Val.C(None) || rs(i)(q.name) == Val.B(None))
     }
     if !pairs.forall((q, _) => defined(rs(i)(q.name))) then Vector.empty
     else (0 to i).filter(j => pairs.forall((q, k) => rs(j)(k.name) == rs(i)(q.name))).toVector

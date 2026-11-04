@@ -77,7 +77,15 @@ object Compile:
               qk(lay.dim(qc, v))(Layout.Start) += lambda
         case (qb: Bits, kb: Bits) =>
           for b <- 0 until qb.bits do qk(lay.at(qb) + b)(lay.at(kb) + b) = lambda / 2
-          top += lambda / 2 * qb.bits
+          val pairTop = lambda / 2 * qb.bits
+          top += pairTop
+          if h.wild then
+            // as for a Cat: a none query (presence 0) scores the pair's top against every position but the start
+            val present = lay.at(qb) + qb.present
+            qk(Layout.One)(Layout.One) += pairTop
+            qk(Layout.One)(Layout.Start) -= pairTop
+            qk(present)(Layout.One) -= pairTop
+            qk(present)(Layout.Start) += pairTop
         case _ => sys.error("checked: comparable fields")
       // the start: a fixed score half a gap below a match — it wins only when nothing matches
       h match
@@ -95,24 +103,45 @@ object Compile:
     def mlp(l: Layer): MlpW =
       // a neuron: its input weights, and its output dims with their weights
       val neurons = Vector.newBuilder[(Array[Float], Seq[(Int, Float)])]
-      for r <- l.rules; w <- r.sets do
-        val outs = w match
-          case Write.To(f, v) => Seq((r.guards, lay.dim(f, v)))
-          case Write.Raise(f) => Seq((r.guards, lay.at(f)))
-          case Write.Copy(dst, src) => src.values.map(v => (r.guards :+ Guard.Is(src, v), lay.dim(dst, v)))
-        for (guards, out) <- outs do
-          // AND of the guards (positive and negative), never at the start
-          val row = Array.fill(d)(0f)
-          var positive = 0
-          guards.foreach {
-            case Guard.Is(f, v) => row(lay.dim(f, v)) += 1; positive += 1
-            case Guard.IsNot(f, v) => row(lay.dim(f, v)) -= 1
-            case Guard.On(f) => row(lay.at(f)) += 1; positive += 1
-            case Guard.Off(f) => row(lay.at(f)) -= 1
-          }
-          row(Layout.One) += 1 - positive
-          row(Layout.Start) -= positive + 1
-          neurons += ((row, Seq(out -> 1f)))
+      // the guards' sum: +1 per positive guard, −1 per negative, and how many positive
+      def guarded(guards: Seq[Guard]): (Array[Float], Int) =
+        val row = Array.fill(d)(0f)
+        var positive = 0
+        guards.foreach {
+          case Guard.Is(f, v) => row(lay.dim(f, v)) += 1; positive += 1
+          case Guard.IsNot(f, v) => row(lay.dim(f, v)) -= 1
+          case Guard.On(f) => row(lay.at(f)) += 1; positive += 1
+          case Guard.Off(f) => row(lay.at(f)) -= 1
+        }
+        (row, positive)
+      // AND of the guards (and of `also`, a 0/1 dim), never at the start: 1 when all hold, else ≤ 0
+      def and(guards: Seq[Guard], also: Option[Int] = None): Array[Float] =
+        val (row, n0) = guarded(guards)
+        also.foreach(a => row(a) += 1)
+        val n = n0 + also.size
+        row(Layout.One) += 1 - n
+        row(Layout.Start) -= n + 1
+        row
+      for r <- l.rules; w <- r.sets do w match
+        case Write.To(f, v) => neurons += ((and(r.guards), Seq(lay.dim(f, v) -> 1f)))
+        case Write.Raise(f) => neurons += ((and(r.guards), Seq(lay.at(f) -> 1f)))
+        case Write.Copy(dst: Cat, src: Cat) =>
+          for v <- src.values do neurons += ((and(r.guards :+ Guard.Is(src, v)), Seq(lay.dim(dst, v) -> 1f)))
+        case Write.Copy(dst: Bits, src: Bits) =>
+          // each ±1 bit passed through while the guards hold: ReLU(x + 2(G − n)) − ReLU(−x + 2(G − n)), G the guards'
+          // sum (n when all hold: x; else |x| ≤ 1 against −2: 0); the presence an AND with the guards
+          val (g, n) = guarded(r.guards)
+          for b <- 0 until src.bits do
+            val up = g.map(_ * 2)
+            up(Layout.One) -= 2f * n
+            up(Layout.Start) -= 2f
+            val down = up.clone()
+            up(lay.at(src) + b) += 1
+            down(lay.at(src) + b) -= 1
+            neurons += ((up, Seq(lay.at(dst) + b -> 1f)))
+            neurons += ((down, Seq(lay.at(dst) + b -> -1f)))
+          neurons += ((and(r.guards, Some(lay.at(src) + src.present)), Seq(lay.at(dst) + dst.present -> 1f)))
+        case Write.Copy(_, _) => sys.error("checked: copies of Cats or Bits")
       // the ladder of a gathering head: min(1, L·x) = ReLU(L·x) − ReLU(L·x − 1), any share ≥ 1/maxLen a 1
       val steep = 2f * p.maxLen
       for h <- l.heads.collect { case h: Lookup if h.all => h }; (dst, _) <- h.copy; i <- 0 until dst.dims do
@@ -168,6 +197,7 @@ object Forward:
         case (c: Cat, Val.C(Some(v))) => x(lay.dim(c, v)) = 1f
         case (b: Bits, Val.B(Some(n))) =>
           for k <- 0 until b.bits do x(lay.at(b) + k) = if (n >> k & 1) == 1 then 1f else -1f
+          x(lay.at(b) + b.present) = 1f
         case (fl: Flag, Val.F(true)) => x(lay.at(fl)) = 1f
         case (m: Many, Val.M(vs)) => vs.foreach(v => x(lay.at(m) + m.values.indexOf(v)) = 1f)
         case _ => ()
@@ -244,11 +274,12 @@ object Forward:
       case m: Many =>
         if !xs.forall(v => near(v, 0) || near(v, 1)) then throw Inexact(s"${f.name} is not 0/1: ${xs.mkString(",")}")
         Val.M(xs.indices.filter(i => near(xs(i), 1)).map(m.values).toSet)
-      case _: Bits =>
+      case b: Bits =>
+        val bits = xs.take(b.bits)
         if xs.forall(near(_, 0)) then Val.B(None)
-        else if xs.forall(v => near(v, 1) || near(v, -1)) then
-          Val.B(Some(xs.zipWithIndex.map((v, k) => if v > 0 then 1 << k else 0).sum))
-        else throw Inexact(s"${f.name} is not ±1: ${xs.mkString(",")}")
+        else if near(xs(b.present), 1) && bits.forall(v => near(v, 1) || near(v, -1)) then
+          Val.B(Some(bits.zipWithIndex.map((v, k) => if v > 0 then 1 << k else 0).sum))
+        else throw Inexact(s"${f.name} is not ±1 and present: ${xs.mkString(",")}")
       case _: Flag =>
         if near(xs(0), 0) then Val.F(false) else if near(xs(0), 1) then Val.F(true)
         else throw Inexact(s"${f.name} is not 0 or 1: ${xs(0)}")
