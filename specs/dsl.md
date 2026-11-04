@@ -111,3 +111,20 @@ to 64 tokens from 400 starts; the share of steps where the window allows a token
 A wider step is a splice made POSSIBLE, not made: the model still has to choose the other span. Logs and JSON repeat
 long runs (timestamps, keys), so they need the widest window; k = 32 costs 32 + 31 heads of k pairs — the next
 question is a cheaper exact form (a hash of the copy, or the state carried in the decode as the runtime does).
+
+**The cheap form (2026-11-04).** The first form paid 2k heads: k for the tokens d back, k − 1 for the copy's window.
+Both go: (1) DOUBLING — a position that knows its h previous tokens reads h more from the position h back, one head a
+layer, so the k tokens back take ⌈log₂ k⌉ + 1 heads; (2) a COUNT (selector width, the new `Count` head: the start
+scores as a match and gets 1/(c+1) of the attention, a ladder of steps reads c) of the tokens copied since the marker —
+the token d back is in the window while the count is above d: a rule, no head. `QuoteSuite` (the cheap form equals the
+reference and QuoteK at every position of 40 random streams of up to 62 tokens):
+
+| k | layers | heads (first form) | dims | neurons |
+|---|---|---|---|---|
+| 8 | 6 | 7 (17) | 152 | 74 |
+| 16 | 7 | 8 (33) | 246 | 130 |
+| 32 | 8 | 9 (65) | 428 | 242 |
+
+So the whole copy is exact in weights up to a length n with log₂ n + 4 heads — the cost moves to the width: k
+fields of the token's code (one-hot here; ±1 bits for a real vocabulary: 18 dims a field for 150k tokens). Beyond n,
+the window (QuoteWindow.sc above: k = 32 wider in 0.1–1.5% of steps).

@@ -79,19 +79,36 @@ sealed trait Op
  * skipped; every pair skipped: every position matches).
  */
 final case class Lookup(copy: Seq[(Field, Field)], query: Seq[Field], key: Seq[Field], latest: Boolean = false,
-    all: Boolean = false, wild: Boolean = false) extends Op
+    all: Boolean = false, wild: Boolean = false) extends Head:
+  def writes: Seq[Field] = copy.map(_._1)
+
+/**
+ * A HEAD COUNTING (selector width): the number of positions j ≤ i (not the start) whose `key` fields equal i's
+ * `query` fields, capped — into `dst`, a `Cat` of the values "0", "1", … "K" (K and more: "K"). Compiled: the start
+ * scores as a match, so it gets 1/(c+1) of the attention; a ladder of steps reads c from it.
+ */
+final case class Count(dst: Cat, query: Seq[Field], key: Seq[Field], wild: Boolean = false) extends Head:
+  def writes: Seq[Field] = Seq(dst)
+  def cap: Int = dst.values.size - 1
+
+/** an attention head: what it compares, what it writes */
+sealed trait Head extends Op:
+  def query: Seq[Field]
+  def key: Seq[Field]
+  def wild: Boolean
+  def writes: Seq[Field]
 
 /** MLP neurons: when every guard holds (and not at the start), the sets */
 final case class Rule(guards: Seq[Guard], sets: Seq[Write]) extends Op
 
 /** heads in parallel, then rules */
-final case class Layer(heads: Seq[Lookup] = Nil, rules: Seq[Rule] = Nil)
+final case class Layer(heads: Seq[Head] = Nil, rules: Seq[Rule] = Nil)
 
 /** a program: its inputs, its layers, the longest sequence it runs on (the start included) */
 final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 64):
   /** every field: the inputs, then those the layers write, in order */
   def fields: Vector[Field] =
-    (inputs ++ layers.flatMap(l => l.heads.flatMap(_.copy.map(_._1)) ++ l.rules.flatMap(_.sets.map(_.target))))
+    (inputs ++ layers.flatMap(l => l.heads.flatMap(_.writes) ++ l.rules.flatMap(_.sets.map(_.target))))
       .distinct.toVector
 
   /** what is wrong with it, if anything: write-once fields, read only after written, types matching */
@@ -110,20 +127,25 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
     for (l, n) <- layers.zipWithIndex do
       def read(f: Field, by: String) =
         if !known(f.name) then out += s"layer $n: $by reads ${f.name} before it is written"
-      val headWrites = l.heads.flatMap(_.copy.map(_._1))
+      val headWrites = l.heads.flatMap(_.writes)
       for h <- l.heads do
-        if h.query.size != h.key.size || h.query.isEmpty then out += s"layer $n: a lookup's query and key pair up"
+        if h.query.size != h.key.size || h.query.isEmpty then out += s"layer $n: a head's query and key pair up"
         for (q, k) <- h.query.zip(h.key) do
-          read(q, "a lookup"); read(k, "a lookup")
+          read(q, "a head"); read(k, "a head")
           if !same(q, k) || q.isInstanceOf[Flag] || q.isInstanceOf[Many] then
             out += s"layer $n: ${q.name} and ${k.name} cannot be compared"
-        for (d, s) <- h.copy do
-          read(s, "a lookup")
-          if h.all then (d, s) match
-            case (Many(_, dv), Cat(_, sv)) if dv == sv => ()
-            case _ => out += s"layer $n: gathering ${s.name} needs a Many of its values, not ${d.name}"
-          else if !same(d, s) then out += s"layer $n: ${s.name} copied into ${d.name} of another kind"
-        if h.all && h.latest then out += s"layer $n: a lookup gathers all or takes the latest, not both"
+        h match
+          case h: Lookup =>
+            for (d, s) <- h.copy do
+              read(s, "a lookup")
+              if h.all then (d, s) match
+                case (Many(_, dv), Cat(_, sv)) if dv == sv => ()
+                case _ => out += s"layer $n: gathering ${s.name} needs a Many of its values, not ${d.name}"
+              else if !same(d, s) then out += s"layer $n: ${s.name} copied into ${d.name} of another kind"
+            if h.all && h.latest then out += s"layer $n: a lookup gathers all or takes the latest, not both"
+          case c: Count =>
+            if c.dst.values != (0 to c.cap).map(_.toString) then
+              out += s"layer $n: a count's ${c.dst.name} has the values 0 to K in order"
       for w <- headWrites do
         if known(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name
       val ruleWrites = l.rules.flatMap(_.sets.map(_.target)).distinct

@@ -14,8 +14,14 @@ object Layout:
   def raw(m: Field): Many = m match
     case Many(n, vs) => Many(n + "#raw", vs)
     case other => sys.error(s"${other.name}: not a Many")
+  /** a counting head's share of attention on the start, before the ladder reads the count from it */
+  def share(c: Cat): Flag = Flag(c.name + "#share")
   def of(p: Program): Layout =
-    val scratch = p.layers.flatMap(_.heads.filter(_.all).flatMap(_.copy.map((d, _) => raw(d))))
+    val scratch = p.layers.flatMap(_.heads.flatMap {
+      case h: Lookup if h.all => h.copy.map((d, _) => raw(d))
+      case c: Count => Seq(share(c.dst))
+      case _ => Nil
+    })
     val all = p.fields ++ scratch
     val offs = all.scanLeft(3)(_ + _.dims)
     Layout(all.map(_.name).zip(offs).toMap, offs.last)
@@ -50,10 +56,13 @@ object Compile:
     val lay = Layout.of(p)
     val d = lay.dims
     def square() = Array.fill(d, d)(0f)
-    def head(h: Lookup): HeadW =
+    def head(h: Head): HeadW =
       val qk = square()
       val ov = square()
-      val lambda = if h.latest then 4 * Eps * p.maxLen else Lambda
+      val latest = h match
+        case l: Lookup => l.latest
+        case _ => false
+      val lambda = if latest then 4 * Eps * p.maxLen else Lambda
       var top = 0f
       for (q, k) <- h.query.zip(h.key) do (q, k) match
         case (qc: Cat, kc: Cat) =>
@@ -71,11 +80,17 @@ object Compile:
           top += lambda / 2 * qb.bits
         case _ => sys.error("checked: comparable fields")
       // the start: a fixed score half a gap below a match — it wins only when nothing matches
-      qk(Layout.One)(Layout.Start) += top - lambda / 2
-      if h.latest then qk(Layout.One)(Layout.PosNum) = Eps
-      for (dst, src) <- h.copy do
-        val into = if h.all then Layout.raw(dst) else dst
-        for i <- 0 until dst.dims do ov(lay.at(into) + i)(lay.at(src) + i) = 1f
+      h match
+        case h: Lookup =>
+          qk(Layout.One)(Layout.Start) += top - lambda / 2
+          if h.latest then qk(Layout.One)(Layout.PosNum) = Eps
+          for (dst, src) <- h.copy do
+            val into = if h.all then Layout.raw(dst) else dst
+            for i <- 0 until dst.dims do ov(lay.at(into) + i)(lay.at(src) + i) = 1f
+        case c: Count =>
+          // the start scores as a match: 1/(c+1) of the attention on it, read into the share
+          qk(Layout.One)(Layout.Start) += top
+          ov(lay.at(Layout.share(c.dst)))(Layout.Start) = 1f
       HeadW(qk, ov)
     def mlp(l: Layer): MlpW =
       // a neuron: its input weights, and its output dims with their weights
@@ -100,7 +115,7 @@ object Compile:
           neurons += ((row, Seq(out -> 1f)))
       // the ladder of a gathering head: min(1, L·x) = ReLU(L·x) − ReLU(L·x − 1), any share ≥ 1/maxLen a 1
       val steep = 2f * p.maxLen
-      for h <- l.heads if h.all; (dst, _) <- h.copy; i <- 0 until dst.dims do
+      for h <- l.heads.collect { case h: Lookup if h.all => h }; (dst, _) <- h.copy; i <- 0 until dst.dims do
         val from = lay.at(Layout.raw(dst)) + i
         val a = Array.fill(d)(0f)
         a(from) = steep
@@ -109,6 +124,26 @@ object Compile:
         b(Layout.One) = -1f
         neurons += ((a, Seq(lay.at(dst) + i -> 1f)))
         neurons += ((b, Seq(lay.at(dst) + i -> -1f)))
+      // the ladder of a counting head: the share x = 1/(c+1); G_n = [c ≥ n] = clamp(S·(tₙ − x), 0, 1), tₙ = 1/(n + ½)
+      // (S·(tₙ − x) ≥ 1 when c ≥ n, ≤ 0 when c < n); the count's one-hot "n" = G_n − G_{n+1}, "0" = 1 − G₁
+      for c <- l.heads.collect { case c: Count => c } do
+        val k = c.cap
+        val s = 4f * (k + 1) * (k + 1)
+        val x = lay.at(Layout.share(c.dst))
+        def bucket(n: Int) = lay.dim(c.dst, n.toString)
+        val zero = Array.fill(d)(0f)
+        zero(Layout.One) = 1f
+        zero(Layout.Start) = -1f
+        neurons += ((zero, Seq(bucket(0) -> 1f)))
+        for n <- 1 to k do
+          val t = 1f / (n + 0.5f)
+          val a = Array.fill(d)(0f)
+          a(Layout.One) = s * t
+          a(x) = -s
+          val b = a.clone()
+          b(Layout.One) -= 1f
+          neurons += ((a, Seq(bucket(n) -> 1f, bucket(n - 1) -> -1f)))
+          neurons += ((b, Seq(bucket(n) -> -1f, bucket(n - 1) -> 1f)))
       val ns = neurons.result()
       val w2 = Array.fill(d, ns.size)(0f)
       for ((_, outs), n) <- ns.zipWithIndex; (o, wt) <- outs do w2(o)(n) = wt

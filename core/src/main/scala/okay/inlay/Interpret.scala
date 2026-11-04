@@ -40,27 +40,32 @@ object Interpret:
     case Val.B(x) => x.isDefined
     case _ => false
 
-  /** position i's reading of one head (`rs` indexed from position 1) */
-  def lookup(h: Lookup, rs: Vector[Record], i: Int): Seq[(String, Val)] =
-    // a wild lookup skips the pairs whose query `Cat` is none
+  /** the positions (indexes into `rs`) up to i whose key fields equal i's query fields — a wild head skipping the
+   * pairs whose query `Cat` is none */
+  def matches(h: Head, rs: Vector[Record], i: Int): Vector[Int] =
     val pairs = h.query.zip(h.key).filterNot { (q, _) =>
       h.wild && q.isInstanceOf[Cat] && rs(i)(q.name) == Val.C(None)
     }
-    val matches =
-      if !pairs.forall((q, _) => defined(rs(i)(q.name))) then Vector.empty
-      else (0 to i).filter(j => pairs.forall((q, k) => rs(j)(k.name) == rs(i)(q.name))).toVector
-    if h.all then
-      h.copy.map((d, s) => d.name -> Val.M(matches.flatMap(j => rs(j)(s.name) match
-        case Val.C(Some(v)) => Some(v)
-        case _ => None).toSet))
-    else if matches.isEmpty then h.copy.map((d, _) => d.name -> none(d))
-    else
-      val chosen = if h.latest then Vector(matches.last) else matches
-      val read = chosen.map(j => h.copy.map((d, s) => d.name -> rs(j)(s.name)))
-      if read.distinct.size > 1 then
-        throw Inexact(s"position ${i + 1}: ${h.copy.map(_._1.name).mkString(", ")} from ${chosen.size} matches " +
-          "that disagree")
-      read.head
+    if !pairs.forall((q, _) => defined(rs(i)(q.name))) then Vector.empty
+    else (0 to i).filter(j => pairs.forall((q, k) => rs(j)(k.name) == rs(i)(q.name))).toVector
+
+  /** position i's reading of one head (`rs` indexed from position 1) */
+  def lookup(h: Head, rs: Vector[Record], i: Int): Seq[(String, Val)] = h match
+    case c: Count => Seq(c.dst.name -> Val.C(Some(math.min(matches(c, rs, i).size, c.cap).toString)))
+    case h: Lookup =>
+      val found = matches(h, rs, i)
+      if h.all then
+        h.copy.map((d, s) => d.name -> Val.M(found.flatMap(j => rs(j)(s.name) match
+          case Val.C(Some(v)) => Some(v)
+          case _ => None).toSet))
+      else if found.isEmpty then h.copy.map((d, _) => d.name -> none(d))
+      else
+        val chosen = if h.latest then Vector(found.last) else found
+        val read = chosen.map(j => h.copy.map((d, s) => d.name -> rs(j)(s.name)))
+        if read.distinct.size > 1 then
+          throw Inexact(s"position ${i + 1}: ${h.copy.map(_._1.name).mkString(", ")} from ${chosen.size} matches " +
+            "that disagree")
+        read.head
 
   def holds(g: Guard, r: Record): Boolean = g match
     case Guard.Is(f, v) => r(f.name) == Val.C(Some(v))
