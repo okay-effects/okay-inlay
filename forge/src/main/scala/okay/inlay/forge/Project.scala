@@ -67,7 +67,7 @@ final class Project(val root: Path, val classpath: String, symdex: String):
   def imports(file: String): Vector[String] =
     val p = root.resolve(file)
     if file.isEmpty || !Files.isRegularFile(p) then Vector.empty
-    else Files.readString(p).linesIterator.map(_.trim).filter(_.startsWith("import ")).toVector
+    else Files.readString(p).linesIterator.filter(_.startsWith("import ")).map(_.trim).toVector // the top level alone
 
   /** up to `n` real calls of `Owner.member` in the project's sources (but its own declaration) */
   def calls(m: Member, n: Int = 3): Vector[String] =

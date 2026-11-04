@@ -49,6 +49,8 @@ object Tasks:
     val b = body(p, m)
     b.nonEmpty && !impureWords.exists(b.contains)
 
+  // a lone capital (`A`, `F[_]`): a type parameter of an enclosing scope — not callable from outside
+  private val TypeParam = """\b[A-Z]\b""".r
   private val Sig = """(\w+)\.(\w+)(?:\((.*)\))?: (.+)""".r
 
   def from(p: Project): Vector[Task] =
@@ -61,7 +63,7 @@ object Tasks:
             val ps = split(params)
             val ok = !params.contains("using") && !params.contains("=>") && !ret.contains("=>") && !ret.contains("!") &&
               ps.size <= 3 && ps.forall(x => x.contains(":") && !x.contains("=") && !x.contains("*")) &&
-              ret.nonEmpty && !ret.contains("Unit")
+              ret.nonEmpty && !ret.contains("Unit") && !TypeParam.findFirstIn(params + " " + ret).isDefined
             if !ok then Vector.empty
             else
               val args = ps.map(_.takeWhile(_ != ':').trim).mkString(", ")

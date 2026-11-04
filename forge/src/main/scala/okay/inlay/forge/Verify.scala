@@ -31,23 +31,39 @@ final class Verify(p: Project, checkSource: String, scalaVersion: String, timeou
   private def batch(items: Vector[(Task, String)]): Either[String, Map[Int, Verdict]] =
     val dir = Files.createTempDirectory("forge-check")
     try
-      val imports = items.flatMap((t, _) => p.imports(t.member.file) :+ s"import ${t.member.pkg}.*").distinct
-      val objects = items.zipWithIndex.map { case ((t, code), i) =>
-        s"object T$i:\n${indent(code)}\nobject R$i:\n${indent(t.reference)}\n"
-      }
+      // each candidate in its member's own package (its file's relative imports resolve there), its owner's members
+      // imported (types nested in the owner, as its signature names them); a file a package
+      val byPkg = items.zipWithIndex.groupBy(_._1._1.member.pkg)
+      for ((pkg, its), n) <- byPkg.toVector.zipWithIndex do
+        val imports = its.flatMap((it, _) => p.imports(it._1.member.file)).distinct
+        val objects = its.map { case ((t, code), i) =>
+          val own = if t.member.owner.isEmpty then "" else s"  import ${t.member.owner}.*\n"
+          s"object T$i:\n$own${indent(code)}\nobject R$i:\n$own${indent(t.reference)}\n"
+        }
+        Files.writeString(dir.resolve(s"Candidates$n.scala"), (if pkg.isEmpty || pkg == "scala" then ""
+          else s"package $pkg\n\n") + imports.mkString("\n") + "\n\n" + objects.mkString("\n"))
+      def at(t: Task, i: Int) =
+        if t.member.pkg.isEmpty || t.member.pkg == "scala" then s"T$i" -> s"R$i"
+        else s"${t.member.pkg}.T$i" -> s"${t.member.pkg}.R$i"
       val calls = items.zipWithIndex.map { case ((t, _), i) =>
+        val (ti, ri) = at(t, i)
         val c = t.arity match
-          case 0 => s"compare0(T$i.${t.name}, R$i.${t.name})"
-          case n => s"compare$n(T$i.${t.name}, R$i.${t.name}, 3, 200)"
+          case 0 => s"compare0($ti.${t.name}, $ri.${t.name})"
+          case n => s"compare$n($ti.${t.name}, $ri.${t.name}, 3, 200)"
         s"""  println("$i\\t" + (try okay.symdex.check.Check.$c catch case e: Throwable => "throws " + e))"""
       }
       Files.writeString(dir.resolve("Check.scala"), checkSource)
-      Files.writeString(dir.resolve("Candidates.scala"), "package forgecheck\n\n" + imports.mkString("\n") +
-        "\n\n" + objects.mkString("\n") + "\n@main def forgeMain(): Unit =\n" + calls.mkString("\n") + "\n")
+      // generators for common types the project's classpath has (okay-effects' JSON value), imported where compared
+      val json = p.classpath.contains("okay-effects-json-value")
+      if json then Files.writeString(dir.resolve("Gens.scala"), Verify.jsonGen)
+      Files.writeString(dir.resolve("Main.scala"), (if json then "import forgegens.given\n\n" else "") +
+        "@main def forgeMain(): Unit =\n" + calls.mkString("\n") + "\n")
       val (rc, out) = run(Seq("scala-cli", "run", "--server=false", "-S", scalaVersion, "--classpath", p.classpath,
         "."), dir)
       if rc != 0 && !out.linesIterator.exists(_.matches("\\d+\\t.*")) then
-        Left(out.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator.filter(_.contains("Error")).take(3).mkString(" | "))
+        Left(out.replaceAll("\u001b\\[[0-9;]*m", "").linesIterator
+          .filter(l => l.contains("Error") || l.contains("Not found") || l.contains("not a member")).take(6)
+          .mkString(" | "))
       else
         val lines = out.linesIterator.filter(_.matches("\\d+\\t.*")).map(l => l.takeWhile(_ != '\t').toInt ->
           l.dropWhile(_ != '\t').drop(1)).toMap
@@ -70,3 +86,25 @@ final class Verify(p: Project, checkSource: String, scalaVersion: String, timeou
           go(a) ++ go(b)
     val all = items.zipWithIndex.map((it, i) => i -> it).grouped(size).flatMap(go).toMap
     items.indices.map(all).toVector
+
+object Verify:
+  /** a generator of okay-effects' JSON values: the small ones (each kind, empty and one-deep), random ones of a depth */
+  val jsonGen: String = """package forgegens
+
+import okay.effects.json.Json
+import okay.symdex.check.Gen
+
+given Gen[Json] = Gen.of(
+  s => LazyList(Json.Null, Json.Bool(true), Json.Num(BigDecimal(0)), Json.Str(""), Json.Str("a"), Json.Bool(false),
+    Json.Num(BigDecimal(1)), Json.Arr(Vector()), Json.Obj(Vector()), Json.Arr(Vector(Json.Num(BigDecimal(1)))),
+    Json.Obj(Vector("a" -> Json.Str("b")))).take(s + 6),
+  (r, s) => random(r, s))
+
+private def random(r: scala.util.Random, s: Int): Json = r.nextInt(if s <= 0 then 4 else 6) match
+  case 0 => Json.Null
+  case 1 => Json.Bool(r.nextBoolean())
+  case 2 => Json.Num(BigDecimal(r.between(-s * 10, s * 10 + 1)))
+  case 3 => Json.Str(List.fill(r.nextInt(s + 2))(('a' + r.nextInt(3)).toChar).mkString)
+  case 4 => Json.Arr(Vector.fill(r.nextInt(3))(random(r, s - 1)))
+  case _ => Json.Obj(Vector.fill(r.nextInt(3))((List("a", "b", "c")(r.nextInt(3)), random(r, s - 1))).distinctBy(_._1))
+"""
