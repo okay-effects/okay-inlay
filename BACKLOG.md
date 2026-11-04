@@ -41,3 +41,6 @@
     attention memory; after `x.` a lookup head finds x's type, the mask allows its members only (a trie over tokens).
     Benchmark on okay-agent, real okay-* tasks, Qwen with and without: invented symbols (target 0), compiles first
     time, fix cycles, time; arms none / processor / weights.
+
+13. **the bridge** (operator, 2026-11-04) — learned interfaces to exact machines: read / mask / write regimes, compiled
+    priors, crystallization; specs/bridge.md; bridge-1..3 in SPRINT.

@@ -53,23 +53,31 @@ enum Guard:
   case IsNot(field: Cat, value: String)
   case On(flag: Flag)
   case Off(flag: Flag)
+  /** a value in a set, or not */
+  case In(field: Many, value: String)
+  case NotIn(field: Many, value: String)
 
   def reads: Field = this match
     case Is(f, _) => f
     case IsNot(f, _) => f
     case On(f) => f
     case Off(f) => f
+    case In(f, _) => f
+    case NotIn(f, _) => f
 
 /** what a rule writes */
 enum Write:
   case To(field: Cat, value: String)
   case Raise(flag: Flag)
   case Copy(dst: Field, src: Field)
+  /** the union of sets (`Many`) and single values (`Cat`) of the same values; a rule with no guards */
+  case Union(dst: Many, srcs: Seq[Field])
 
   def target: Field = this match
     case To(f, _) => f
     case Raise(f) => f
     case Copy(d, _) => d
+    case Union(d, _) => d
 
 /** an op of a layer */
 sealed trait Op
@@ -107,8 +115,9 @@ final case class Rule(guards: Seq[Guard], sets: Seq[Write]) extends Op
 /** heads in parallel, then rules */
 final case class Layer(heads: Seq[Head] = Nil, rules: Seq[Rule] = Nil)
 
-/** a program: its inputs, its layers, the longest sequence it runs on (the start included) */
-final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 64):
+/** a program: its inputs, its layers, the longest sequence it runs on (the start included); `causal`: a position
+ * attends to itself and those before (a decoder), else to every position (a block of its own, as Datalog.sc) */
+final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 64, causal: Boolean = true):
   /** every field: the inputs, then those the layers write, in order */
   def fields: Vector[Field] =
     (inputs ++ layers.flatMap(l => l.heads.flatMap(_.writes) ++ l.rules.flatMap(_.sets.map(_.target))))
@@ -135,14 +144,19 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
         if h.query.size != h.key.size || h.query.isEmpty then out += s"layer $n: a head's query and key pair up"
         for (q, k) <- h.query.zip(h.key) do
           read(q, "a head"); read(k, "a head")
-          if !same(q, k) || q.isInstanceOf[Flag] || q.isInstanceOf[Many] then
+          val member = (q, k) match
+            case (Many(_, x), Cat(_, y)) => x == y
+            case _ => false
+          if !(member || same(q, k) && !q.isInstanceOf[Flag] && !q.isInstanceOf[Many]) then
             out += s"layer $n: ${q.name} and ${k.name} cannot be compared"
+          if member && h.wild then out += s"layer $n: a set query (${q.name}) is not wild"
         h match
           case h: Lookup =>
             for (d, s) <- h.copy do
               read(s, "a lookup")
               if h.all then (d, s) match
                 case (Many(_, dv), Cat(_, sv)) if dv == sv => ()
+                case (Many(_, dv), Many(_, sv)) if dv == sv => ()
                 case _ => out += s"layer $n: gathering ${s.name} needs a Many of its values, not ${d.name}"
               else if !same(d, s) then out += s"layer $n: ${s.name} copied into ${d.name} of another kind"
             if h.all && h.latest then out += s"layer $n: a lookup gathers all or takes the latest, not both"
@@ -152,8 +166,12 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
       for w <- headWrites do
         if known(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name
       val ruleWrites = l.rules.flatMap(_.sets.map(_.target)).distinct
+      val gathered = l.heads.collect { case h: Lookup if h.all => h.copy.map(_._1.name) }.flatten.toSet
       for r <- l.rules do
         r.guards.foreach(g => read(g.reads, "a rule"))
+        for f <- r.guards.map(_.reads) ++ r.sets.collect { case Write.Union(_, ss) => ss }.flatten
+            if gathered(f.name) do
+          out += s"layer $n: ${f.name} is gathered by this layer's head; a rule reads it in the next layer"
         r.sets.foreach { case Write.Copy(d, s) =>
             read(s, "a rule")
             (d, s) match
@@ -161,6 +179,14 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
               case (Bits(_, x), Bits(_, y)) if x == y => ()
               case _ =>
                 out += s"layer $n: a rule copies ${s.name} into ${d.name}: Cats of the same values or Bits alike"
+          case Write.Union(d, ss) =>
+            ss.foreach(read(_, "a union"))
+            if r.guards.nonEmpty then out += s"layer $n: a union into ${d.name} takes no guards"
+            for s <- ss if !(s match
+                case Cat(_, x) => x == d.values
+                case Many(_, x) => x == d.values
+                case _ => false) do
+              out += s"layer $n: ${s.name} united into ${d.name} of other values"
           case _ => () }
       for w <- ruleWrites do
         if known(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name

@@ -39,7 +39,7 @@ final case class MlpW(w1: Array[Array[Float]], w2: Array[Array[Float]]):
 final case class LayerW(heads: Vector[HeadW], mlp: MlpW)
 
 /** a compiled program: its layout and every layer's matrices */
-final case class Weights(layout: Layout, layers: Vector[LayerW], maxLen: Int):
+final case class Weights(layout: Layout, layers: Vector[LayerW], maxLen: Int, causal: Boolean = true):
   def params: Long = layers.map(l => l.heads.size.toLong * 2 * layout.dims * layout.dims +
     l.mlp.w1.length.toLong * layout.dims * 2).sum
 
@@ -75,6 +75,10 @@ object Compile:
             for v <- qc.values do
               qk(lay.dim(qc, v))(Layout.One) -= lambda
               qk(lay.dim(qc, v))(Layout.Start) += lambda
+        case (qm: Many, kc: Cat) =>
+          // membership: the key's one-hot against the query's set — λ when the key's value is in it, 0 when not
+          for v <- qm.values do qk(lay.at(qm) + qm.values.indexOf(v))(lay.dim(kc, v)) = lambda
+          top += lambda
         case (qb: Bits, kb: Bits) =>
           for b <- 0 until qb.bits do qk(lay.at(qb) + b)(lay.at(kb) + b) = lambda / 2
           val pairTop = lambda / 2 * qb.bits
@@ -112,6 +116,8 @@ object Compile:
           case Guard.IsNot(f, v) => row(lay.dim(f, v)) -= 1
           case Guard.On(f) => row(lay.at(f)) += 1; positive += 1
           case Guard.Off(f) => row(lay.at(f)) -= 1
+          case Guard.In(f, v) => row(lay.at(f) + f.values.indexOf(v)) += 1; positive += 1
+          case Guard.NotIn(f, v) => row(lay.at(f) + f.values.indexOf(v)) -= 1
         }
         (row, positive)
       // AND of the guards (and of `also`, a 0/1 dim), never at the start: 1 when all hold, else ≤ 0
@@ -142,6 +148,15 @@ object Compile:
             neurons += ((down, Seq(lay.at(dst) + b -> -1f)))
           neurons += ((and(r.guards, Some(lay.at(src) + src.present)), Seq(lay.at(dst) + dst.present -> 1f)))
         case Write.Copy(_, _) => sys.error("checked: copies of Cats or Bits")
+        case Write.Union(dst, srcs) =>
+          // per value: min(1, Σ sources) = ReLU(x) − ReLU(x − 1), x the sum of the sources' 0/1 dims
+          for i <- dst.values.indices do
+            val a = Array.fill(d)(0f)
+            for s <- srcs do a(lay.at(s) + i) += 1f
+            val b = a.clone()
+            b(Layout.One) -= 1f
+            neurons += ((a, Seq(lay.at(dst) + i -> 1f)))
+            neurons += ((b, Seq(lay.at(dst) + i -> -1f)))
       // the ladder of a gathering head: min(1, L·x) = ReLU(L·x) − ReLU(L·x − 1), any share ≥ 1/maxLen a 1
       val steep = 2f * p.maxLen
       for h <- l.heads.collect { case h: Lookup if h.all => h }; (dst, _) <- h.copy; i <- 0 until dst.dims do
@@ -177,7 +192,7 @@ object Compile:
       val w2 = Array.fill(d, ns.size)(0f)
       for ((_, outs), n) <- ns.zipWithIndex; (o, wt) <- outs do w2(o)(n) = wt
       MlpW(ns.map(_._1).toArray, w2)
-    Weights(lay, p.layers.map(l => LayerW(l.heads.map(head).toVector, mlp(l))).toVector, p.maxLen)
+    Weights(lay, p.layers.map(l => LayerW(l.heads.map(head).toVector, mlp(l))).toVector, p.maxLen, p.causal)
 
 /** THE WEIGHTS RUN: embedding, layers (float32: softmax, ReLU), the read-out decoded */
 object Forward:
@@ -238,11 +253,12 @@ object Forward:
         for h <- l.heads do
           // the query xᵢᵀ qk, a score against each position up to i, softmax, the copies averaged
           val q = spread(h.qk, xs(i), nz(i), dims)
-          val scores = (0 to i).map(j => dot(q, xs(j)))
+          val seen = if w.causal then 0 to i else xs.indices
+          val scores = seen.map(j => dot(q, xs(j)))
           val top = scores.max
           val e = scores.map(s => math.exp((s - top).toDouble).toFloat)
           val sum = e.sum
-          for j <- 0 to i if e(j) != 0f do
+          for j <- seen if e(j) != 0f do
             val v = spread(h.ovT, xs(j), nz(j), dims)
             val wj = e(j) / sum
             for k <- 0 until dims do total(k) += wj * v(k)

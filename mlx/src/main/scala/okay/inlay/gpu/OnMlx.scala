@@ -31,8 +31,8 @@ final class OnMlx(val w: Weights, dtype: Dtype = Dtype.Float32):
       val n = x0.length
       val d = w.layout.dims
       // −∞ above the diagonal: a position attends to itself and those before
-      val mask = astype(floats(Array.tabulate(n * n)(k => if k % n > k / n then Float.NegativeInfinity else 0f), n, n),
-        dtype)
+      val mask = astype(floats(Array.tabulate(n * n)(k => if w.causal && k % n > k / n then Float.NegativeInfinity
+        else 0f), n, n), dtype)
       val zero = astype(scalar(0f), dtype)
       var x = astype(floats(x0.flatten, n, d), dtype)
       for (heads, mlp) <- layers do

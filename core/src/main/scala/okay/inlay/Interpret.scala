@@ -30,7 +30,7 @@ object Interpret:
     var rs = records(p.checked, inputs)
     for l <- p.layers do
       // the heads read the records as the layer found them, in parallel
-      val heard = rs.indices.map(i => l.heads.flatMap(h => lookup(h, rs, i)).toMap)
+      val heard = rs.indices.map(i => l.heads.flatMap(h => lookup(h, rs, i, p.causal)).toMap)
       rs = rs.indices.map(i => rs(i) ++ heard(i)).toVector
       rs = rs.map(r => r ++ rules(l.rules, r))
     rs
@@ -38,26 +38,35 @@ object Interpret:
   private def defined(v: Val): Boolean = v match
     case Val.C(x) => x.isDefined
     case Val.B(x) => x.isDefined
+    case Val.M(x) => x.nonEmpty
     case _ => false
+
+  /** a key equal to the query — or, for a set query, a member of it */
+  private def matching(query: Val, key: Val): Boolean = (query, key) match
+    case (Val.M(s), Val.C(Some(v))) => s(v)
+    case (Val.M(_), _) => false
+    case _ => query == key
 
   /** the positions (indexes into `rs`) up to i whose key fields equal i's query fields — a wild head skipping the
    * pairs whose query `Cat` is none */
-  def matches(h: Head, rs: Vector[Record], i: Int): Vector[Int] =
+  def matches(h: Head, rs: Vector[Record], i: Int, causal: Boolean = true): Vector[Int] =
     val pairs = h.query.zip(h.key).filterNot { (q, _) =>
       h.wild && (rs(i)(q.name) == Val.C(None) || rs(i)(q.name) == Val.B(None))
     }
     if !pairs.forall((q, _) => defined(rs(i)(q.name))) then Vector.empty
-    else (0 to i).filter(j => pairs.forall((q, k) => rs(j)(k.name) == rs(i)(q.name))).toVector
+    else (if causal then 0 to i else rs.indices).filter(j => pairs.forall((q, k) => matching(rs(i)(q.name), rs(j)(k.name))))
+      .toVector
 
   /** position i's reading of one head (`rs` indexed from position 1) */
-  def lookup(h: Head, rs: Vector[Record], i: Int): Seq[(String, Val)] = h match
-    case c: Count => Seq(c.dst.name -> Val.C(Some(math.min(matches(c, rs, i).size, c.cap).toString)))
+  def lookup(h: Head, rs: Vector[Record], i: Int, causal: Boolean = true): Seq[(String, Val)] = h match
+    case c: Count => Seq(c.dst.name -> Val.C(Some(math.min(matches(c, rs, i, causal).size, c.cap).toString)))
     case h: Lookup =>
-      val found = matches(h, rs, i)
+      val found = matches(h, rs, i, causal)
       if h.all then
         h.copy.map((d, s) => d.name -> Val.M(found.flatMap(j => rs(j)(s.name) match
-          case Val.C(Some(v)) => Some(v)
-          case _ => None).toSet))
+          case Val.C(Some(v)) => Set(v)
+          case Val.M(vs) => vs
+          case _ => Set.empty[String]).toSet))
       else if found.isEmpty then h.copy.map((d, _) => d.name -> none(d))
       else
         val chosen = if h.latest then Vector(found.last) else found
@@ -72,6 +81,8 @@ object Interpret:
     case Guard.IsNot(f, v) => r(f.name) != Val.C(Some(v))
     case Guard.On(f) => r(f.name) == Val.F(true)
     case Guard.Off(f) => r(f.name) == Val.F(false)
+    case Guard.In(f, v) => r(f.name) match { case Val.M(s) => s(v); case _ => false }
+    case Guard.NotIn(f, v) => r(f.name) match { case Val.M(s) => !s(v); case _ => true }
 
   /** the fields one layer's rules write at a record: none where no rule fires */
   def rules(rs: Seq[Rule], r: Record): Seq[(String, Val)] =
@@ -85,5 +96,9 @@ object Interpret:
         case Write.To(_, v) => Val.C(Some(v))
         case Write.Raise(_) => Val.F(true)
         case Write.Copy(_, s) => r(s.name)
+        case Write.Union(_, ss) => Val.M(ss.flatMap(s => r(s.name) match
+          case Val.C(Some(v)) => Set(v)
+          case Val.M(vs) => vs
+          case _ => Set.empty[String]).toSet)
       }
     }
