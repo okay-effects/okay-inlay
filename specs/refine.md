@@ -38,3 +38,22 @@ other projects for transfer; and no regression elsewhere (a fixed set of general
 4. The task generator and the verified data (rejection sampling, repairs, the teacher).
 5. Train, measure (held-out, transfer, regression).
 6. The compiled module with a trained adapter.
+
+## Stage 1, steering: no gain (2026-11-04, `SteerBench`)
+
+The direction = the mean hidden state of the reference solutions minus that of the model's own failed answers, per
+task, the evaluated task left out; added to every position after a layer. Qwen3-4B, SymbolsBench's ten tasks, the
+focused prompt without thinking, one round:
+
+| | compile | behave |
+|---|---|---|
+| base | 6 | 5 |
+| layer 9, c = 2 / 4 | 6 / 6 | 4 / 3 |
+| layer 18, c = 2 / 4 | 5 / 2 | 4 / 0 |
+| layer 27, c = 2 / 4 | 7 / 3 | 5 / 2 |
+
+Never above the base; strong steering breaks the code. The pairs differ in content as well as in habit (a reference
+and a failure of the same task share little text), so the mean difference is mostly content — a cleaner contrast
+(the same answer with and without the wrapper) might still find a direction; parked. Stage 2–3 (training in Scala)
+done instead: mlx-scala `Mlx.valueAndGrad` (a C trampoline calling back into Scala, JVM and Native), Qwen3 LoRA
+adapters, `Lora` (AdamW, the answer's cross-entropy): one example's loss 3.34 → 0.0001 in 20 steps, 0.38 s a step.
