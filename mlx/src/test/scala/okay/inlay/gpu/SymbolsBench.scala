@@ -189,7 +189,8 @@ class SymbolsBench extends munit.FunSuite:
     val chat = Chat.load(dir.get)
     val model = Model.load(dir.get, mapped = true)
     // an adapter (okay-forge's), if given: on the model for every arm
-    val adapter = sys.env.get("SYMBOLS_ADAPTER").map(a => Lora.attach(model.asInstanceOf[Adaptable], a))
+    val adapter = sys.env.get("SYMBOLS_ADAPTER").filter(_.nonEmpty)
+      .map(a => Lora.attach(model.asInstanceOf[Adaptable], a))
     println(s"adapter: ${sys.env.getOrElse("SYMBOLS_ADAPTER", "none")}")
     val tok = chat.tokenizer
     val stamp = java.time.LocalDateTime.now.withNano(0).toString
