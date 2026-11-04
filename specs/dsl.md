@@ -94,3 +94,20 @@ query (the current token if not a marker, win₁ … win_{k−1}) against (prev�
 **Done when:** the law for `Many`, `all`, `wild`, `back` on random inputs; the quote program equals `QuoteK` on every
 step of random token streams with sources and markers; the window measured against the full `Quote` on real logs.
 Then: `Count` (selector width), MLX, the block on Qwen.
+
+Done 2026-11-04: `Many`, `Lookup` `all` / `wild`, `Builtin.back`; `QuoteSuite`: the quote program (4 layers; k = 6: 13
+heads, 140 dims, 22 neurons) equals the reference and QuoteK at every position of 60 random streams for k = 1, 3, 6
+(~400 steps inside quotes each, ~70% of them narrowed); a mutation (the window cut to one token) fails it.
+`experiments/QuoteWindow.sc` — the window against the whole copy on real texts tokenized as Qwen3.6 does (copies of up
+to 64 tokens from 400 starts; the share of steps where the window allows a token the whole copy does not):
+
+| text | tokens | k = 4 | k = 8 | k = 16 | k = 32 |
+|---|---|---|---|---|---|
+| a system log (install.log) | 5965 | 10.42% | 6.02% | 4.79% | 1.54% |
+| git log --stat | 5070 | 17.66% | 7.55% | 0.74% | 0.16% |
+| Scala code (symdex's Tools.scala) | 4334 | 10.82% | 1.93% | 0.49% | 0.11% |
+| an agent's journal (JSON) | 5454 | 13.15% | 8.41% | 4.25% | 0.78% |
+
+A wider step is a splice made POSSIBLE, not made: the model still has to choose the other span. Logs and JSON repeat
+long runs (timestamps, keys), so they need the widest window; k = 32 costs 32 + 31 heads of k pairs — the next
+question is a cheaper exact form (a hash of the copy, or the state carried in the decode as the runtime does).

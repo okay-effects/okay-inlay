@@ -23,17 +23,26 @@ final case class Bits(name: String, bits: Int) extends Field:
 final case class Flag(name: String) extends Field:
   def dims: Int = 1
 
-/** the inputs the embedding fills itself: a position's own position, and the previous one */
+/** a set of `values`: one 0/1 dim each */
+final case class Many(name: String, values: Vector[String]) extends Field:
+  require(values.nonEmpty && values.distinct == values, s"$name: distinct values")
+  def dims: Int = values.size
+
+/** the inputs the embedding fills itself: a position's own position, the previous one, the one `d` back */
 object Builtin:
   def pos(bits: Int): Bits = Bits("pos", bits)
   def prev(bits: Int): Bits = Bits("prev", bits)
-  def isBuiltin(f: Field): Boolean = f.name == "pos" || f.name == "prev"
+  /** the position `d` back (none before the first) */
+  def back(d: Int, bits: Int): Bits = Bits(s"back$d", bits)
+  def isBuiltin(f: Field): Boolean =
+    f.isInstanceOf[Bits] && (f.name == "pos" || f.name == "prev" || f.name.matches("back[1-9][0-9]*"))
 
 /** a field's value at a position */
 enum Val:
   case C(value: Option[String])
   case B(value: Option[Int])
   case F(value: Boolean)
+  case M(values: scala.collection.immutable.Set[String])
 
 /** a rule's condition */
 enum Guard:
@@ -65,10 +74,12 @@ sealed trait Op
 /**
  * A HEAD: each position i attends to the positions j ≤ i (not the start) whose `key` fields equal i's `query` fields,
  * pair by pair, and copies `copy`'s sources there into its destinations. No match: none. Several: one if they agree,
- * else inexact — unless `latest`, the latest match winning.
+ * else inexact — unless `latest`, the latest match winning. `all`: every match's source value gathered into a
+ * `Many` destination (a set, never inexact). `wild`: a query `Cat` field that is none matches any key (its pair
+ * skipped; every pair skipped: every position matches).
  */
-final case class Lookup(copy: Seq[(Field, Field)], query: Seq[Field], key: Seq[Field], latest: Boolean = false)
-    extends Op
+final case class Lookup(copy: Seq[(Field, Field)], query: Seq[Field], key: Seq[Field], latest: Boolean = false,
+    all: Boolean = false, wild: Boolean = false) extends Op
 
 /** MLP neurons: when every guard holds (and not at the start), the sets */
 final case class Rule(guards: Seq[Guard], sets: Seq[Write]) extends Op
@@ -91,21 +102,28 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
       case (Cat(_, x), Cat(_, y)) => x == y
       case (Bits(_, x), Bits(_, y)) => x == y
       case (Flag(_), Flag(_)) => true
+      case (Many(_, x), Many(_, y)) => x == y
       case _ => false
     for b <- inputs.filter(Builtin.isBuiltin) if (1 << b.dims) < maxLen do
       out += s"${b.name}: ${b.dims} bits do not reach maxLen $maxLen"
     if inputs.map(_.name).distinct.size != inputs.size then out += "an input given twice"
     for (l, n) <- layers.zipWithIndex do
-      def read(f: Field, by: String) = if !known(f.name) then out += s"layer $n: $by reads ${f.name} before it is written"
+      def read(f: Field, by: String) =
+        if !known(f.name) then out += s"layer $n: $by reads ${f.name} before it is written"
       val headWrites = l.heads.flatMap(_.copy.map(_._1))
       for h <- l.heads do
         if h.query.size != h.key.size || h.query.isEmpty then out += s"layer $n: a lookup's query and key pair up"
         for (q, k) <- h.query.zip(h.key) do
           read(q, "a lookup"); read(k, "a lookup")
-          if !same(q, k) || q.isInstanceOf[Flag] then out += s"layer $n: ${q.name} and ${k.name} cannot be compared"
+          if !same(q, k) || q.isInstanceOf[Flag] || q.isInstanceOf[Many] then
+            out += s"layer $n: ${q.name} and ${k.name} cannot be compared"
         for (d, s) <- h.copy do
           read(s, "a lookup")
-          if !same(d, s) then out += s"layer $n: ${s.name} copied into ${d.name} of another kind"
+          if h.all then (d, s) match
+            case (Many(_, dv), Cat(_, sv)) if dv == sv => ()
+            case _ => out += s"layer $n: gathering ${s.name} needs a Many of its values, not ${d.name}"
+          else if !same(d, s) then out += s"layer $n: ${s.name} copied into ${d.name} of another kind"
+        if h.all && h.latest then out += s"layer $n: a lookup gathers all or takes the latest, not both"
       for w <- headWrites do
         if known(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name
       val ruleWrites = l.rules.flatMap(_.sets.map(_.target)).distinct
