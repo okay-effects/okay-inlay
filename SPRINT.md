@@ -30,5 +30,9 @@
   direction "calls the API" − "reimplements / wraps in an object" from contrasting pairs, added while decoding; the
   measure on SymbolsBench (base: best arm 7/10 behave).
 
+- [~] **refine-tool** — okay-refine (specs/refine.md "The tool"): tasks with checks from a symdex index (delegations +
+  templates, split by object), batched eval, attempts kept by the verifier, LoRA training with the adapter saved,
+  a regression set, serving. Measure each step on Qwen3-4B and Qwen3.5-4B.
+
 Done 2026-11-03: Wordle steps 1–3 (`experiments/Wordle.sc`, spec §4): the head's set equals the reference after 2,479
 moves; the mask: 0 guesses against the hints, 0 invented words.

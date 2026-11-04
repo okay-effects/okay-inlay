@@ -81,3 +81,24 @@ thinking and rounds. Next: (1) more evaluation — tasks generated the same way 
 against the member itself; (2) a regression set of general Scala tasks before and after; (3) the adapter under the
 best arm (thinking, rounds, tests); (4) richer training data — the model's own verified answers, its repairs, other
 projects (okay-datalog, okay-guard); (5) save and load the adapter (safetensors), serve it through okay-mlx.
+
+## The tool (operator, 2026-11-04): refining a model for a project, end to end
+
+"A really working result, and a tool for developing such technologies further — to develop models efficiently and
+purposefully." `okay-refine` — one pipeline, each step a command, each result a row in a history:
+
+1. **tasks** — from a project's symdex index (any project with SemanticDB): every public member whose parameters the
+   generators cover becomes tasks — a delegation ("write f with X.m"), and compositions from templates by its return
+   type (`.size`, `.isEmpty`, `.headOption`, `.toList.sorted`, `.getOrElse(…)`, `.map(_.toString)`, …) — each with
+   its REFERENCE expression and a CHECK: f against the reference on generated inputs (symdex's `Check.scala`
+   generators, `compareN`: every input up to a size and random ones). Tasks whose reference does not compile or has
+   no generator are dropped. Split by OBJECT: train objects, held-out objects.
+2. **eval** — a model (and an adapter) on a task set: compile and behave per task, in batches (one compilation for
+   many, the failures alone again); the prompt as the agent gives it (focused API, its real calls).
+3. **attempts** — the model answers the training tasks; the verifier keeps what passes (its own distribution), the
+   failures with their errors (for repairs).
+4. **train** — LoRA on references + verified attempts (+ repairs later), in Scala; the adapter saved (safetensors).
+5. **regression** — a fixed set of general Scala tasks with checks, before and after: nothing else lost.
+6. **serve** — the adapter loaded by mlx-scala, served by okay-mlx, used by okay-agent.
+
+Every number in history.tsv: model, adapter, task set, compile, behave, time.
