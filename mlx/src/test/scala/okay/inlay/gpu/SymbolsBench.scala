@@ -86,11 +86,16 @@ class SymbolsBench extends munit.FunSuite:
     if !java.nio.file.Files.exists(history) then
       java.nio.file.Files.writeString(history, "when\tmodel\tarm\ttask\trefs\tinvented\tcompiles\terror\tcode\n")
     var totals = Map.empty[String, (Int, Int, Int)]
-    for (task, i) <- tasks.zipWithIndex; arm <- Seq("free", "held") do
+    for (task, i) <- tasks.zipWithIndex; arm <- Seq("free", "held", "outline", "outline+held") do
+      // the fair arm: the object's member names in the prompt (no signatures)
+      val owner = "`([A-Z]\\w*)`".r.findFirstMatchIn(task).map(_.group(1)).getOrElse("")
+      val outline = if !arm.startsWith("outline") then "" else
+        s" Its members: ${ms.getOrElse(owner, Set.empty).toSeq.sorted.mkString(", ")}."
       val prompt = chat.ask("You write Scala 3 for the project symdex (package `symdex`, already imported). " + task +
+        outline +
         " Reply with one ```scala code block holding only the definition, no explanation.",
         Map("enable_thinking" -> false))
-      val port = if arm == "held" then Names(tok, ms) else null
+      val port = if arm.endsWith("held") then Names(tok, ms) else null
       val s = Session(model, prompt, 300, chat.stops, port = port)
       val out = tok.decode(Iterator.continually(s.next()).takeWhile(_.isDefined).flatten.toVector)
       s.close()

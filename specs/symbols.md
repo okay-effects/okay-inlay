@@ -49,3 +49,24 @@ arguments still fail, so the compile rate says how far names alone go.
 Next: (1) choose the member WHOLE, by the model's own scores over the members' full token sequences, then force it
 — not prefix by prefix; (2) close the escapes (the dot dropped, a name glued after a member); (3) the fair arm: the
 members (or signatures) in the prompt, free and held — the mask as a guarantee on top of knowledge, not a substitute.
+
+## Second measure (2026-11-04): whole-member choices, the dropped dot refused, the outline arm
+
+mlx-scala: `Port.choices` (whole continuations scored by the model — checkpoint, log-probabilities summed, rewind —
+the best forced); `Names` offers an owner's members whole once a selection begins and refuses `Owner word`. Qwen3-4B,
+the same 10 tasks, four arms:
+
+| arm | symdex member references | invented | compile |
+|---|---|---|---|
+| free | 3 | 3 | 5 of 10 |
+| held | 3 | 0 | 5 of 10 |
+| outline (member names in the prompt) | 0 | 0 | 5 of 10 |
+| outline + held | 0 | 0 | 5 of 10 |
+
+The 4B model goes around any constraint that does not give it knowledge: the whole-member choice gave `impure` and it
+still glued its own `Symbols` after it; refused the dot, it glued an underscore — `Equivalence_generators` (another
+identifier, which the port lets be); given the members' names, it DECLARED its own `object Equivalence` with them
+(it compiles — by shadowing the real one). The constraint holds — no invented member reaches the code — but the code
+is not better: on this model, names are not the bottleneck; the API's meaning is. Next: the same on Qwen3.6-35B
+(after the equivalence bench frees the GPU), and the outline with signatures; the mask is worth keeping as a
+guarantee in an agent that has the knowledge (symdex's `members`/`outline` in its loop), not as the knowledge.
