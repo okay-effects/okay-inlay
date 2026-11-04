@@ -2,3 +2,4 @@ target/
 .bsp/
 .scala-build/
 .idea/
+web/page/main.js
