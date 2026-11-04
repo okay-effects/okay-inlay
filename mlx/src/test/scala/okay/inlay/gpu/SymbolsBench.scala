@@ -211,8 +211,9 @@ class SymbolsBench extends munit.FunSuite:
       val held = arm.endsWith("held")
       val rounds = if best then 5 else if arm.startsWith("loop") then 3 else 1
       var messages = Vector(msg("user", "You write Scala 3 for the project symdex (package `symdex`, already " +
-        "imported). " + task + knowledge + " Reply with one ```scala code block holding only the definition, no " +
-        "explanation."))
+        "imported). " + task + knowledge + (if best then " Your definition goes in your own code, outside symdex: " +
+          "call symdex's members, do not reimplement them, and declare no object or class." else "") +
+        " Reply with one ```scala code block holding only the definition, no explanation."))
       var result: (String, Boolean, String) = ("", false, "")
       var round = 0
       while round < rounds && !result._2 do
