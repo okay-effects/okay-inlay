@@ -13,17 +13,20 @@ object General:
   val tasks: Vector[Task] = Vector(
     t("reverseWords", "s: String", "String", "the words of s (split by spaces, empty ones dropped) in reverse order, " +
       "joined by single spaces", """s.split(" ").filter(_.nonEmpty).reverse.mkString(" ")"""),
-    t("isPalindrome", "s: String", "Boolean", "whether s, lower-cased and with only its letters and digits kept, reads " +
+    t("isPalindrome", "s: String", "Boolean", "whether s, lower-cased and with only its letters and digits kept, " +
+      "reads " +
       "the same backwards", "{ val t = s.toLowerCase.filter(_.isLetterOrDigit); t == t.reverse }"),
     t("fizz", "n: Int", "String", "\"FizzBuzz\" if n is divisible by 15, \"Fizz\" by 3, \"Buzz\" by 5, else n as text",
-      """if n % 15 == 0 then "FizzBuzz" else if n % 3 == 0 then "Fizz" else if n % 5 == 0 then "Buzz" else n.toString"""),
+      """if n % 15 == 0 then "FizzBuzz" else if n % 3 == 0 then "Fizz" """ +
+        """else if n % 5 == 0 then "Buzz" else n.toString"""),
     t("countVowels", "s: String", "Int", "how many characters of s are vowels (a, e, i, o, u, either case)",
       """s.count("aeiouAEIOU".contains(_))"""),
     t("secondLargest", "xs: List[Int]", "Option[Int]", "the second largest DISTINCT value of xs, if there is one",
       "xs.distinct.sorted.reverse.drop(1).headOption"),
     t("mergeSorted", "a: List[Int], b: List[Int]", "List[Int]", "all elements of a and b in one ascending list",
       "(a ++ b).sorted"),
-    t("wordFreq", "s: String", "Map[String, Int]", "how often each word of s occurs (words split by spaces, empty ones " +
+    t("wordFreq", "s: String", "Map[String, Int]", "how often each word of s occurs (words split by spaces, " +
+      "empty ones " +
       "dropped)", """s.split(" ").filter(_.nonEmpty).groupBy(identity).view.mapValues(_.length).toMap"""),
     t("chunk", "xs: List[Int], n: Int", "List[List[Int]]", "xs cut into consecutive groups of n (the last may be " +
       "shorter); no groups at all when n is not positive", "if n <= 0 then Nil else xs.grouped(n).toList"),

@@ -52,7 +52,8 @@ class TransferBench extends munit.FunSuite:
       "okay-llm" -> "coreJVM", "okay-mcp" -> "core").flatMap(source)
     val evalTasks = usable(evalSrc)
     val train = trainSrcs.map(s => s -> usable(s))
-    println(s"eval: ${evalTasks.size} symdex tasks; train: " + train.map((s, t) => s"${s.name} ${t.size}").mkString(", "))
+    println(s"eval: ${evalTasks.size} symdex tasks; train: " +
+      train.map((s, t) => s"${s.name} ${t.size}").mkString(", "))
     val chat = Chat.load(dir.get)
     val model = Model.load(dir.get, mapped = true).asInstanceOf[Adaptable]
     val r = Forge(model, chat)

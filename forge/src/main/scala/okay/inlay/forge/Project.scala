@@ -34,7 +34,8 @@ final class Project(val root: Path, val classpath: String, symdex: String):
 
   /** where each project type is declared (its file), for reading its fields */
   private lazy val typeFiles: Map[String, String] =
-    symbols.collect { case (s, n, f) if s.endsWith("#") && types.get(n).contains(s.stripSuffix("#").replace('/', '.')) =>
+    symbols.collect { case (s, n, f)
+        if s.endsWith("#") && types.get(n).contains(s.stripSuffix("#").replace('/', '.')) =>
       n -> f }.toMap
 
   /** the project types a type's declaration names (its fields, its cases' fields): read from its block of text */
@@ -48,7 +49,8 @@ final class Project(val root: Path, val classpath: String, symdex: String):
         case i =>
           val ind = lines(i).takeWhile(_ == ' ').length
           val block = lines(i) +: lines.drop(i + 1).takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > ind)
-          """\b[A-Z]\w*\b""".r.findAllIn(block.mkString("\n")).toVector.distinct.filter(n => n != name && types.contains(n))
+          """\b[A-Z]\w*\b""".r.findAllIn(block.mkString("\n")).toVector.distinct
+            .filter(n => n != name && types.contains(n))
     }
 
   /** the types `names` reach through their fields (themselves included), as far as `limit` */

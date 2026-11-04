@@ -97,7 +97,8 @@ final class Verify(p: Project, checkSource: String, scalaVersion: String, timeou
     items.indices.map(all).toVector
 
 object Verify:
-  /** a generator of okay-effects' JSON values: the small ones (each kind, empty and one-deep), random ones of a depth */
+  /** a generator of okay-effects' JSON values: the small ones (each kind, empty and one-deep), random ones of a
+   * depth */
   val jsonGen: String = """package forgegens
 
 import okay.effects.json.Json
@@ -110,7 +111,8 @@ given Gen[Json] = Gen.of(
   (r, s) => random(r, s))
 
 given Gen[Json.Obj] = Gen.of(
-  s => LazyList(Json.Obj(Vector()), Json.Obj(Vector("a" -> Json.Str("b"))), Json.Obj(Vector("a" -> Json.Num(BigDecimal(1)),
+  s => LazyList(Json.Obj(Vector()), Json.Obj(Vector("a" -> Json.Str("b"))),
+    Json.Obj(Vector("a" -> Json.Num(BigDecimal(1)),
     "b" -> Json.Null))).take(s + 1),
   (r, s) => Json.Obj(Vector.fill(r.nextInt(3))((List("a", "b", "c")(r.nextInt(3)), random(r, s - 1))).distinctBy(_._1)))
 
