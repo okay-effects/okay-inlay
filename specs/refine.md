@@ -57,3 +57,27 @@ and a failure of the same task share little text), so the mean difference is mos
 (the same answer with and without the wrapper) might still find a direction; parked. Stage 2–3 (training in Scala)
 done instead: mlx-scala `Mlx.valueAndGrad` (a C trampoline calling back into Scala, JVM and Native), Qwen3 LoRA
 adapters, `Lora` (AdamW, the answer's cross-entropy): one example's loss 3.34 → 0.0001 in 20 steps, 0.38 s a step.
+
+## Stages 4–5, first run: a habit learned (2026-11-04, `RefineBench`)
+
+25 tasks generated from symdex's index — each usable public member of the objects SymbolsBench does NOT ask about
+(Archive, Hook, … — ten objects): "symdex's object `X` has `m` — <its doc>. Write `def doM(…): T` with it", the answer
+the member called (`= X.m(a, b)`), in the evaluation's own prompt format. A LoRA adapter (rank 8, q/v/o on all 36
+layers, ~4.4M parameters) trained on them in Scala: two epochs, 59 s, the loss 0.106 → 0.0001. SymbolsBench's ten
+tasks (other objects, never trained on), Qwen3-4B, the focused prompt without thinking, one round:
+
+| | compile | behave |
+|---|---|---|
+| before | 6 | 5 |
+| after | 8 | 7 |
+
+The two gained are the habit's: task 8 (it had declared its own `object Tasty`) and task 9 (its own `object
+Equivalence`) — now one-line calls. One minute of training on generated delegations, and the small model without
+thinking and in one round does what it did before only with thinking and five rounds (7 of 10). Left: meaning —
+`Equivalence.Verdict(out).equivalent` (the case class for the parser), `split(' ')`, `Exec.run[List[String], Ran]`.
+
+Not yet shown: that it holds on more tasks (ten, greedy, one run), that nothing else got worse, that it adds to
+thinking and rounds. Next: (1) more evaluation — tasks generated the same way from held-out objects, each checked
+against the member itself; (2) a regression set of general Scala tasks before and after; (3) the adapter under the
+best arm (thinking, rounds, tests); (4) richer training data — the model's own verified answers, its repairs, other
+projects (okay-datalog, okay-guard); (5) save and load the adapter (safetensors), serve it through okay-mlx.

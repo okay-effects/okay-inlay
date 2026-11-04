@@ -25,7 +25,8 @@
   derails — `impure Symbols`, `Equivalence generators`; next in specs/symbols.md) — code without invented APIs, stage (a) (specs/symbols.md): `Names` port in mlx-scala (members
   from symdex `named(S, N)`), unit laws; the measure on Qwen3-4B: invented members free vs held, overrides, compiles.
 
-- [~] **refine-1** — steering (specs/refine.md stage 1): a hook for hidden states in mlx-scala's forward pass, the
+- [x] **refine-1** (2026-11-04: steering no gain; training in Scala works; LoRA on 25 generated tasks lifts
+  SymbolsBench 5 → 7 behave without thinking — specs/refine.md) — steering (specs/refine.md stage 1): a hook for hidden states in mlx-scala's forward pass, the
   direction "calls the API" − "reimplements / wraps in an object" from contrasting pairs, added while decoding; the
   measure on SymbolsBench (base: best arm 7/10 behave).
 
