@@ -1,6 +1,6 @@
 package okay.inlay.gpu
 
-import _root_.mlx.llm.{Chat, Model, Models, Names, Session}
+import _root_.mlx.llm.{Adaptable, Chat, Lora, Model, Models, Names, Session}
 
 /**
  * CODE WITHOUT INVENTED APIs, MEASURED (specs/symbols.md): tasks on symdex's own objects, their API not in the prompt;
@@ -188,6 +188,9 @@ class SymbolsBench extends munit.FunSuite:
     println(s"symdex: ${ms.size} owners, ${ms.values.map(_.size).sum} members; arms ${arms.mkString(" ")}")
     val chat = Chat.load(dir.get)
     val model = Model.load(dir.get, mapped = true)
+    // an adapter (okay-forge's), if given: on the model for every arm
+    val adapter = sys.env.get("SYMBOLS_ADAPTER").map(a => Lora.attach(model.asInstanceOf[Adaptable], a))
+    println(s"adapter: ${sys.env.getOrElse("SYMBOLS_ADAPTER", "none")}")
     val tok = chat.tokenizer
     val stamp = java.time.LocalDateTime.now.withNano(0).toString
     val history = java.nio.file.Path.of("../bench/symbols/history.tsv").toAbsolutePath.normalize
@@ -247,7 +250,8 @@ class SymbolsBench extends munit.FunSuite:
         s"$right $err\n$c\n")
       val (r0, b0, k0, n0, g0) = totals.getOrElse(arm, (0, 0, 0, 0, 0))
       totals += arm -> (r0 + refs, b0 + bad.size, k0 + (if ok then 1 else 0), n0 + round, g0 + (if right then 1 else 0))
-      java.nio.file.Files.writeString(history, Seq(stamp, repo, arm, i + 1, refs, bad.mkString(" "),
+      java.nio.file.Files.writeString(history, Seq(stamp, repo, arm + adapter.fold("")(_ => "+forge"), i + 1, refs,
+        bad.mkString(" "),
         if right then "right" else ok.toString, err, c.replace("\n", "\\n").replace("\t", " ")).mkString("\t") + "\n",
         java.nio.file.StandardOpenOption.APPEND)
     for arm <- arms; (r, b, k, n, g) <- totals.get(arm) do
