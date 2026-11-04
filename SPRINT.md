@@ -9,5 +9,8 @@
   128·position with λ = 4·128·maxLen. Next: v1 (spec) — `Count`, the allowed set as output, the `Port` handler, the
   quote program as weights == mlx-scala's `Quote` (8e0c5f2) on every step.
 
+- [~] **dsl-v1** — the quote as weights (specs/dsl.md v1): Many, Lookup all/wild, Builtin.back; the quote program ==
+  QuoteK on random streams; the window measured against the full Quote on real logs.
+
 Done 2026-11-03: Wordle steps 1–3 (`experiments/Wordle.sc`, spec §4): the head's set equals the reference after 2,479
 moves; the mask: 0 guesses against the hints, 0 invented words.
