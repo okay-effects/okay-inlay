@@ -126,3 +126,20 @@ ceiling). The run took 1 h 55 min, most of it the verifier's compilations (a tas
 What it does not show yet: the tasks are generated from templates (a call, a size, an emptiness …) — the same kinds in
 training and evaluation, so part of the gain is the task's form. Next: the adapter on SymbolsBench's hand-written
 tasks (other kinds, meaning-heavy), and on Qwen3.5-4B; the regression set grown past 20.
+
+### The same adapter on SymbolsBench (hand-written tasks, other kinds; 2026-11-04)
+
+Qwen3-4B, the adapter from the transfer run (trained on eight other projects' generated tasks), the same day and
+settings, with and without it:
+
+| arm | without: compile / behave | with: compile / behave |
+|---|---|---|
+| usage (API and its calls in the prompt, no thinking, one round) | 7 / 4 | 6 / 5 |
+| best (focused API, thinking, five rounds, import hints) | 9 / 7 | **10 / 8** |
+
+One task better in each arm (best: task 2 now right) — on ten tasks, within what one run differs by; no harm. The
+large gain on generated tasks (47 → 55 of 55) is mostly the task FORM the adapter learned; hand-written tasks ask for
+meaning, which these delegations do not teach. Next: training tasks that ask for meaning — compositions of two
+members, transformations of a member's result checked by `equivalent`, the model's repairs (error → fix) with
+`type`'s errors — and SymbolsBench grown past ten tasks so a difference of one is visible. Two runs of the baseline
+fell to a GPU error caused by another process (Metal "InnocentVictim"); the third ran after the other agent's suite.
