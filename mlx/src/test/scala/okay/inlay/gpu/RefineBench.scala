@@ -1,6 +1,6 @@
 package okay.inlay.gpu
 
-import _root_.mlx.llm.{Chat, Lora, Model, Models, Qwen3, Session}
+import _root_.mlx.llm.{Adaptable, Chat, Lora, Model, Models, Qwen35, Session}
 
 /**
  * REFINING THE SMALL MODEL (specs/refine.md stages 3–5): tasks generated from symdex's index — each public member of
@@ -43,12 +43,14 @@ class RefineBench extends munit.FunSuite:
 
   test("a LoRA adapter trained on generated tasks, SymbolsBench before and after"):
     assume(sys.env.contains("REFINE"), "REFINE=1 to run")
-    val dir = Models.snapshot("mlx-community/Qwen3-4B-4bit")
-    assume(dir.isDefined, "Qwen3-4B is not in the HuggingFace cache")
+    val repo = sys.env.getOrElse("REFINE_MODEL", "mlx-community/Qwen3-4B-4bit")
+    val dir = Models.snapshot(repo)
+    assume(dir.isDefined, s"$repo is not in the HuggingFace cache")
     val cp = java.nio.file.Files.readString(java.nio.file.Path.of("/tmp/symdex-cp.txt")).trim
     val ms = bench.members()
     val chat = Chat.load(dir.get)
-    val model = Model.load(dir.get, mapped = true).asInstanceOf[Qwen3]
+    val model = Model.load(dir.get, mapped = true).asInstanceOf[Adaptable]
+    println(s"model: $repo")
     val tok = chat.tokenizer
     // the training set: every object but the held-out ones, each usable member a task
     val owners = ms.keys.toVector.sorted.filterNot(heldOut)
@@ -72,7 +74,10 @@ class RefineBench extends munit.FunSuite:
       (res.count(_._1), res.count(_._2))
     val before = evaluate("before")
     val epochs = sys.env.getOrElse("REFINE_EPOCHS", "2").toInt
-    val lora = Lora(model, rank = 8, projs = Seq("q", "v", "o"), lr = 1e-4f)
+    val projs = model match
+      case _: Qwen35 => Seq("o", "out", "down")
+      case _ => Seq("q", "v", "o")
+    val lora = Lora(model, rank = 8, projs = projs, lr = 1e-4f)
     val r = scala.util.Random(3)
     val t0 = System.nanoTime
     for e <- 1 to epochs do
