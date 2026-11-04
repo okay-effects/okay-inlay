@@ -1,4 +1,4 @@
-package okay.inlay.refine
+package okay.inlay.forge
 
 import java.nio.file.{Files, Path}
 
@@ -14,7 +14,7 @@ final case class Verdict(compiles: Boolean, behaves: Boolean, detail: String)
 final class Verify(p: Project, checkSource: String, scalaVersion: String, timeoutMs: Long = 120000):
   private def run(cmd: Seq[String], dir: Path): (Int, String) =
     val pb = ProcessBuilder(cmd*).directory(dir.toFile).redirectErrorStream(true)
-    val out = Files.createTempFile("refine", ".out")
+    val out = Files.createTempFile("forge", ".out")
     pb.redirectOutput(out.toFile)
     val proc = pb.start()
     try
@@ -29,7 +29,7 @@ final class Verify(p: Project, checkSource: String, scalaVersion: String, timeou
 
   /** one program for these candidates: their verdicts by index, or the compiler's complaint */
   private def batch(items: Vector[(Task, String)]): Either[String, Map[Int, Verdict]] =
-    val dir = Files.createTempDirectory("refine-check")
+    val dir = Files.createTempDirectory("forge-check")
     try
       val imports = items.flatMap((t, _) => p.imports(t.member.file) :+ s"import ${t.member.pkg}.*").distinct
       val objects = items.zipWithIndex.map { case ((t, code), i) =>
@@ -42,8 +42,8 @@ final class Verify(p: Project, checkSource: String, scalaVersion: String, timeou
         s"""  println("$i\\t" + (try okay.symdex.check.Check.$c catch case e: Throwable => "throws " + e))"""
       }
       Files.writeString(dir.resolve("Check.scala"), checkSource)
-      Files.writeString(dir.resolve("Candidates.scala"), "package refinecheck\n\n" + imports.mkString("\n") +
-        "\n\n" + objects.mkString("\n") + "\n@main def refineMain(): Unit =\n" + calls.mkString("\n") + "\n")
+      Files.writeString(dir.resolve("Candidates.scala"), "package forgecheck\n\n" + imports.mkString("\n") +
+        "\n\n" + objects.mkString("\n") + "\n@main def forgeMain(): Unit =\n" + calls.mkString("\n") + "\n")
       val (rc, out) = run(Seq("scala-cli", "run", "--server=false", "-S", scalaVersion, "--classpath", p.classpath,
         "."), dir)
       if rc != 0 && !out.linesIterator.exists(_.matches("\\d+\\t.*")) then

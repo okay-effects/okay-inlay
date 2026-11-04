@@ -1,4 +1,4 @@
-package okay.inlay.refine
+package okay.inlay.forge
 
 import java.nio.file.{Files, Path}
 

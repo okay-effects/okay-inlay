@@ -25,12 +25,12 @@
   derails — `impure Symbols`, `Equivalence generators`; next in specs/symbols.md) — code without invented APIs, stage (a) (specs/symbols.md): `Names` port in mlx-scala (members
   from symdex `named(S, N)`), unit laws; the measure on Qwen3-4B: invented members free vs held, overrides, compiles.
 
-- [x] **refine-1** (2026-11-04: steering no gain; training in Scala works; LoRA on 25 generated tasks lifts
-  SymbolsBench 5 → 7 behave without thinking — specs/refine.md) — steering (specs/refine.md stage 1): a hook for hidden states in mlx-scala's forward pass, the
+- [x] **forge-1** (2026-11-04: steering no gain; training in Scala works; LoRA on 25 generated tasks lifts
+  SymbolsBench 5 → 7 behave without thinking — specs/forge.md) — steering (specs/forge.md stage 1): a hook for hidden states in mlx-scala's forward pass, the
   direction "calls the API" − "reimplements / wraps in an object" from contrasting pairs, added while decoding; the
   measure on SymbolsBench (base: best arm 7/10 behave).
 
-- [~] **refine-tool** — okay-refine (specs/refine.md "The tool"): tasks with checks from a symdex index (delegations +
+- [~] **forge-tool** — okay-forge (specs/forge.md "The tool"): tasks with checks from a symdex index (delegations +
   templates, split by object), batched eval, attempts kept by the verifier, LoRA training with the adapter saved,
   a regression set, serving. Measure each step on Qwen3-4B and Qwen3.5-4B.
 

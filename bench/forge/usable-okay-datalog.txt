@@ -1,0 +1,6 @@
+okay.datalog.Parse.program:call
+okay.datalog.Parse.program:right
+okay.datalog.Term.show:call
+okay.datalog.Term.show:length
+okay.datalog.Parse.atom:call
+okay.datalog.Parse.atom:right

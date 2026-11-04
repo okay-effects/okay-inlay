@@ -1,19 +1,19 @@
-package okay.inlay.refine
+package okay.inlay.forge
 
 import _root_.mlx.llm.{Adaptable, Chat, Lora, Model, Models, Qwen35}
 import java.nio.file.{Files, Path}
 
 /**
- * TRANSFER (specs/refine.md "The tool"): an adapter trained on tasks from OTHER projects (okay-scala, okay-datalog) —
+ * TRANSFER (specs/forge.md "The tool"): an adapter trained on tasks from OTHER projects (okay-scala, okay-datalog) —
  * their references, then also the model's own answers the verifier kept — and evaluated on symdex's tasks, never
- * trained on. Rows into bench/refine/history.tsv. Opt-in: TRANSFER=1 (REFINE_MODEL: the model).
+ * trained on. Rows into bench/forge/history.tsv. Opt-in: TRANSFER=1 (FORGE_MODEL: the model).
  */
 class TransferBench extends munit.FunSuite:
   override val munitTimeout = scala.concurrent.duration.Duration(300, "min")
   private val home = sys.props("user.home")
   private val symdexBin = s"$home/work/my/symdex/target/symdex/bin/symdex"
   private val check = Files.readString(Path.of(s"$home/work/my/symdex/src/main/resources/symdex/Check.scala.txt"))
-  private val bench = Path.of("../bench/refine").toAbsolutePath.normalize
+  private val bench = Path.of("../bench/forge").toAbsolutePath.normalize
 
   /** a project made ready (Prepare: cloned, compiled with SemanticDB, its classpath), its Scala version read from it */
   def source(name: String, module: String): Option[Source] =
@@ -27,7 +27,7 @@ class TransferBench extends munit.FunSuite:
         val p = Project(root, cp, symdexBin)
         Some(Source(name, p, Verify(p, check, scala)))
 
-  /** the tasks whose reference compiles and equals itself (kept in bench/refine/usable-<name>.txt) */
+  /** the tasks whose reference compiles and equals itself (kept in bench/forge/usable-<name>.txt) */
   def usable(src: Source): Vector[Task] =
     val all = Tasks.from(src.project)
     val file = bench.resolve(s"usable-${src.name}.txt")
@@ -43,7 +43,7 @@ class TransferBench extends munit.FunSuite:
   test("an adapter from other projects, on symdex"):
     assume(sys.env.contains("TRANSFER"), "TRANSFER=1 to run")
     Files.createDirectories(bench)
-    val repo = sys.env.getOrElse("REFINE_MODEL", "mlx-community/Qwen3-4B-4bit")
+    val repo = sys.env.getOrElse("FORGE_MODEL", "mlx-community/Qwen3-4B-4bit")
     val dir = Models.snapshot(repo)
     assume(dir.isDefined, s"$repo is not in the HuggingFace cache")
     val evalSrc = source("symdex", "").get
@@ -55,7 +55,7 @@ class TransferBench extends munit.FunSuite:
     println(s"eval: ${evalTasks.size} symdex tasks; train: " + train.map((s, t) => s"${s.name} ${t.size}").mkString(", "))
     val chat = Chat.load(dir.get)
     val model = Model.load(dir.get, mapped = true).asInstanceOf[Adaptable]
-    val r = Refine(model, chat)
+    val r = Forge(model, chat)
     val history = bench.resolve("history.tsv")
     if !Files.exists(history) then
       Files.writeString(history, "when\tmodel\tarm\ttasks\tcompile\tbehave\tseconds\tnote\n")

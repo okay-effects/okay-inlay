@@ -1,0 +1,2 @@
+okay.scala3.std.Async.defaultContext:call
+okay.scala3.Escape.pure:call

@@ -1,4 +1,4 @@
-package okay.inlay.refine
+package okay.inlay.forge
 
 import _root_.mlx.llm.{Adaptable, Chat, Lora, Session}
 
@@ -6,11 +6,11 @@ import _root_.mlx.llm.{Adaptable, Chat, Lora, Session}
 final case class Source(name: String, project: Project, verify: Verify)
 
 /**
- * THE PIPELINE'S STEPS (specs/refine.md "The tool"): the prompt as an agent gives it (the member's declaration and
+ * THE PIPELINE'S STEPS (specs/forge.md "The tool"): the prompt as an agent gives it (the member's declaration and
  * doc, its real calls, the rule "call, do not reimplement, no object of your own"); answers generated (greedy, no
  * thinking, one round); answers judged by the verifier; examples trained on.
  */
-final class Refine(model: Adaptable, chat: Chat):
+final class Forge(model: Adaptable, chat: Chat):
   private val tok = chat.tokenizer
   private val end = tok.id("<|im_end|>")
 

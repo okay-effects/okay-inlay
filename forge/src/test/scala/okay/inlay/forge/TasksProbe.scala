@@ -1,4 +1,4 @@
-package okay.inlay.refine
+package okay.inlay.forge
 
 /** the tasks symdex's index gives, each reference checked against itself: what is usable. Opt-in: PROBE=1 */
 class TasksProbe extends munit.FunSuite:

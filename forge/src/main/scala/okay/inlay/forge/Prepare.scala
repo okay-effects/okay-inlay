@@ -1,14 +1,14 @@
-package okay.inlay.refine
+package okay.inlay.forge
 
 import java.nio.file.{Files, Path}
 
 /**
  * A PROJECT MADE READY FOR THE TOOL, out of its working copy (other agents may be building there): cloned into the
- * tool's home (`~/.cache/okay-refine/projects/<name>`, a local clone), compiled with SemanticDB on, its compile
+ * tool's home (`~/.cache/okay-forge/projects/<name>`, a local clone), compiled with SemanticDB on, its compile
  * classpath exported (`<name>.cp`). Kept across runs — not in /tmp.
  */
 object Prepare:
-  val home: Path = Path.of(sys.env.getOrElse("REFINE_HOME", sys.props("user.home") + "/.cache/okay-refine"))
+  val home: Path = Path.of(sys.env.getOrElse("FORGE_HOME", sys.props("user.home") + "/.cache/okay-forge"))
 
   private def sh(dir: Path, cmd: String*): (Int, String) =
     val p = ProcessBuilder(cmd*).directory(dir.toFile).redirectErrorStream(true).start()

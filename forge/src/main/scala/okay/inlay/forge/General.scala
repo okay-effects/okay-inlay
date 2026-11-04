@@ -1,8 +1,8 @@
-package okay.inlay.refine
+package okay.inlay.forge
 
 /**
  * THE REGRESSION SET: general Scala tasks, no project's API — each stated exactly (what an edge case gives) and with
- * its reference; checked as any task. What a refined model must not lose.
+ * its reference; checked as any task. What a model trained for a project must not lose.
  */
 object General:
   private val none = Member("scala", "", "", "")

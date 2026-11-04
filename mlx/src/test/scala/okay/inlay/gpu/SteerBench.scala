@@ -5,7 +5,7 @@ import _root_.mlx.Mlx.*
 import _root_.mlx.llm.{Chat, Model, Models, Qwen3, Session}
 
 /**
- * STEERING (specs/refine.md stage 1): the small model's habit — wrapping its answer in an object, reimplementing what
+ * STEERING (specs/forge.md stage 1): the small model's habit — wrapping its answer in an object, reimplementing what
  * it should call — as a direction in the residual stream: the mean hidden state of right answers (the reference
  * solutions) minus that of its own failed ones (bench/symbols/history.tsv), at a layer; added while decoding. Each
  * task's direction from the OTHER nine (leave one out). Opt-in: STEER=1.

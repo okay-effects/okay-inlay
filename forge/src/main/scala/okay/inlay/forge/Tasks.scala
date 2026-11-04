@@ -1,4 +1,4 @@
-package okay.inlay.refine
+package okay.inlay.forge
 
 /** A TASK: write `def <name>(<params>): <ret>` doing <text> with a project's member; its reference definition */
 final case class Task(id: String, member: Member, kind: String, name: String, params: String, ret: String,

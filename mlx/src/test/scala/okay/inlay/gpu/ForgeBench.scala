@@ -3,12 +3,12 @@ package okay.inlay.gpu
 import _root_.mlx.llm.{Adaptable, Chat, Lora, Model, Models, Qwen35, Session}
 
 /**
- * REFINING THE SMALL MODEL (specs/refine.md stages 3–5): tasks generated from symdex's index — each public member of
+ * TRAINING THE SMALL MODEL FOR A PROJECT (specs/forge.md stages 3–5): tasks generated from symdex's index — each public member of
  * an object: "write f with it", the answer the member CALLED — on objects the evaluation does not ask about; a LoRA
  * adapter trained on them in Scala (mlx-scala's Lora); then SymbolsBench's ten tasks (other objects) with and
- * without it: a habit learned (call, qualify, no wrapper), not an API memorised. Opt-in: REFINE=1.
+ * without it: a habit learned (call, qualify, no wrapper), not an API memorised. Opt-in: FORGE=1.
  */
-class RefineBench extends munit.FunSuite:
+class ForgeBench extends munit.FunSuite:
   override val munitTimeout = scala.concurrent.duration.Duration(180, "min")
   private val bench = SymbolsBench()
   /** the objects the evaluation asks about: none of their members trained on */
@@ -42,8 +42,8 @@ class RefineBench extends munit.FunSuite:
       "holding only the definition, no explanation.", Map("enable_thinking" -> false))
 
   test("a LoRA adapter trained on generated tasks, SymbolsBench before and after"):
-    assume(sys.env.contains("REFINE"), "REFINE=1 to run")
-    val repo = sys.env.getOrElse("REFINE_MODEL", "mlx-community/Qwen3-4B-4bit")
+    assume(sys.env.contains("FORGE"), "FORGE=1 to run")
+    val repo = sys.env.getOrElse("FORGE_MODEL", "mlx-community/Qwen3-4B-4bit")
     val dir = Models.snapshot(repo)
     assume(dir.isDefined, s"$repo is not in the HuggingFace cache")
     val cp = java.nio.file.Files.readString(java.nio.file.Path.of("/tmp/symdex-cp.txt")).trim
@@ -73,7 +73,7 @@ class RefineBench extends munit.FunSuite:
       res.zipWithIndex.filterNot(_._1._2).take(3).foreach((r, i) => println(s"  [${i + 1}] ${r._3.take(200)}"))
       (res.count(_._1), res.count(_._2))
     val before = evaluate("before")
-    val epochs = sys.env.getOrElse("REFINE_EPOCHS", "2").toInt
+    val epochs = sys.env.getOrElse("FORGE_EPOCHS", "2").toInt
     val projs = model match
       case _: Qwen35 => Seq("o", "out", "down")
       case _ => Seq("q", "v", "o")

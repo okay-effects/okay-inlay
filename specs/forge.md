@@ -1,4 +1,7 @@
-# Refining a small model (spec, 2026-11-04)
+# okay-forge — training a small model for a project (spec, 2026-11-04)
+
+Named okay-forge by the operator (2026-11-04; it was "okay-refine" — a word with other meanings): it forges a small
+model for a project — tasks from the project's index, a verifier, training on what passes.
 
 The operator's goal (2026-11-04): not a bigger model — a small one (Qwen3-4B) made good at the work, by changing the
 MODEL, with inlay as the platform. The measured gap (specs/symbols.md): on symdex's API, Qwen3-4B with the best
@@ -58,7 +61,7 @@ and a failure of the same task share little text), so the mean difference is mos
 done instead: mlx-scala `Mlx.valueAndGrad` (a C trampoline calling back into Scala, JVM and Native), Qwen3 LoRA
 adapters, `Lora` (AdamW, the answer's cross-entropy): one example's loss 3.34 → 0.0001 in 20 steps, 0.38 s a step.
 
-## Stages 4–5, first run: a habit learned (2026-11-04, `RefineBench`)
+## Stages 4–5, first run: a habit learned (2026-11-04, `ForgeBench`)
 
 25 tasks generated from symdex's index — each usable public member of the objects SymbolsBench does NOT ask about
 (Archive, Hook, … — ten objects): "symdex's object `X` has `m` — <its doc>. Write `def doM(…): T` with it", the answer
@@ -82,10 +85,10 @@ against the member itself; (2) a regression set of general Scala tasks before an
 best arm (thinking, rounds, tests); (4) richer training data — the model's own verified answers, its repairs, other
 projects (okay-datalog, okay-guard); (5) save and load the adapter (safetensors), serve it through okay-mlx.
 
-## The tool (operator, 2026-11-04): refining a model for a project, end to end
+## The tool (operator, 2026-11-04): training a model for a project, end to end
 
 "A really working result, and a tool for developing such technologies further — to develop models efficiently and
-purposefully." `okay-refine` — one pipeline, each step a command, each result a row in a history:
+purposefully." `okay-forge` — one pipeline, each step a command, each result a row in a history:
 
 1. **tasks** — from a project's symdex index (any project with SemanticDB): every public member whose parameters the
    generators cover becomes tasks — a delegation ("write f with X.m"), and compositions from templates by its return

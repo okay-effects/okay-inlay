@@ -8,7 +8,7 @@ ThisBuild / scalacOptions ++= Seq("-deprecation", "-feature", "-Wunused:all", "-
 lazy val core = (project in file("core"))
   .settings(name := "okay-inlay", libraryDependencies += "org.scalameta" %% "munit" % "1.2.3" % Test)
 
-lazy val root = (project in file(".")).aggregate(core, mlx, refine).settings(publish / skip := true)
+lazy val root = (project in file(".")).aggregate(core, mlx, forge).settings(publish / skip := true)
 
 /** mlx-scala's native libraries (its native-lib/build.sh): MLX_SCALA_LIB, else ../mlx-scala/native-lib/out/lib */
 val nativeLib = sys.env.get("MLX_SCALA_LIB").map(file).getOrElse(file("../mlx-scala/native-lib/out/lib")).getCanonicalFile
@@ -23,9 +23,9 @@ lazy val mlx = (project in file("mlx")).dependsOn(core % "compile->compile;test-
     Test / fork := true,
     javaOptions ++= Seq("--enable-native-access=ALL-UNNAMED", s"-Dokm.lib=$nativeLib/libokm.dylib", "-Xss16m"))
 
-/** okay-refine (specs/refine.md "The tool"): tasks with checks from a project's symdex index, evaluation, verified
+/** okay-forge (specs/forge.md "The tool"): tasks with checks from a project's symdex index, evaluation, verified
  * attempts, LoRA training in Scala, the adapter saved */
-lazy val refine = (project in file("refine")).dependsOn(mlx)
-  .settings(name := "okay-refine", libraryDependencies += "org.scalameta" %% "munit" % "1.2.3" % Test,
+lazy val forge = (project in file("forge")).dependsOn(mlx)
+  .settings(name := "okay-forge", libraryDependencies += "org.scalameta" %% "munit" % "1.2.3" % Test,
     fork := true, run / fork := true,
     javaOptions ++= Seq("--enable-native-access=ALL-UNNAMED", s"-Dokm.lib=$nativeLib/libokm.dylib", "-Xss16m"))
