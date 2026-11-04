@@ -1,3 +1,4 @@
-.scala-build/
-.bsp/
 target/
+.bsp/
+.scala-build/
+.idea/
