@@ -128,3 +128,14 @@ reference and QuoteK at every position of 40 random streams of up to 62 tokens):
 So the whole copy is exact in weights up to a length n with log₂ n + 4 heads — the cost moves to the width: k
 fields of the token's code (one-hot here; ±1 bits for a real vocabulary: 18 dims a field for 150k tokens). Beyond n,
 the window (QuoteWindow.sc above: k = 32 wider in 0.1–1.5% of steps).
+
+**On the GPU and beside a real model (2026-11-04).** `OnMlx` (module `mlx`): the compiled weights as MLX matrices —
+the quote programs decode to the reference at every position (window k = 3, cheap k = 8 and 32), float32's
+underflow keeping the heads hard on the GPU as on the CPU. `Bits` got a presence dim (none linear: wildcards and
+guarded copies of bits), so `Quotes.cheapBits` compares and copies tokens as ±1 bits and one-hot is left only where
+the allowed set is gathered (equal to QuoteK for vocabularies of 6, 40, 300 — 300 words, k = 16: 8 heads, 1312
+dims). `WeightsPort`: mlx-scala's decode port answered by that block run on the GPU beside Qwen3-4B — a compact
+vocabulary per prompt (its tokens, the markers, "other"), the block over the tokens so far each step, the close and
+the prefix tokens added by a fixed map. `QwenQuoteSuite`: 160 steps of Qwen3-4B on the log, 93 of them inside a
+quote, the block's set equal to QuoteK at every one; the quotes are the log's lines; 2.8 s for the whole generation
+(81 words, 8 heads, k = 16). The block decides, not Scala code; what is left of the runtime is the token map.

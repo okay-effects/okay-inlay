@@ -16,7 +16,9 @@ val nativeLib = sys.env.get("MLX_SCALA_LIB").map(file).getOrElse(file("../mlx-sc
 /** the compiled weights on MLX (Apple's GPU), through mlx-scala */
 lazy val mlx = (project in file("mlx")).dependsOn(core % "compile->compile;test->test")
   .settings(name := "okay-inlay-mlx",
+    resolvers += "okay-simple" at "https://okay-effects.github.io/okay-simple/maven",
     libraryDependencies ++= Seq("io.github.sergey-scherbina" %% "mlx-scala" % "0.1.0",
+      "io.github.sergey-scherbina" %% "mlx-scala-llm" % "0.1.0",
       "org.scalameta" %% "munit" % "1.2.3" % Test),
     Test / fork := true,
     javaOptions ++= Seq("--enable-native-access=ALL-UNNAMED", s"-Dokm.lib=$nativeLib/libokm.dylib", "-Xss16m"))

@@ -14,7 +14,8 @@
   (QuoteWindow.sc): k = 32 allows more in 0.1–1.5% of steps, k = 8 in 2–8%. Next: the program on MLX and as a block
   on Qwen; a cheaper exact form for long windows.
 
-- [~] **dsl-mlx** — (1a) a handler `Mlx`: compiled weights run on MLX through mlx-scala (module `mlx`, JVM); the law MLX ==
+- [x] **dsl-mlx** (done 2026-11-04: OnMlx exact on the GPU; Quotes.cheapBits; WeightsPort beside Qwen3-4B — 160 steps,
+  93 inside quotes, each equal to QuoteK; 2.8 s) — (1a) a handler `Mlx`: compiled weights run on MLX through mlx-scala (module `mlx`, JVM); the law MLX ==
   Forward on the LawSuite and QuoteSuite programs. (1b) a structured compile for a real vocabulary (tokens as ±1
   bits, heads with narrow projections, the allowed set scattered from the attention) and a `WeightsPort` in
   mlx-scala: the block run beside Qwen on each token, its `allowed` masking the logits; the law on Qwen3-4B
