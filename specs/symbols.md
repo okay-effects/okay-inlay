@@ -98,3 +98,27 @@ were code that did not touch symdex at all.
 
 For okay-agent: before code that calls a project object, symdex's signatures of it AND its real calls in the
 prompt (or the agent asks `members` / `references`), and the compiler's errors back — the mask optional on top.
+
+## Fourth measure (2026-11-04): behaviour, focus, thinking, hints
+
+A behaviour check per task (the definition against the API itself on inputs; validated: the ten reference solutions
+pass, a wrong one fails). "best": the members most like the task (three at most) and their real calls, thinking on,
+five rounds with the compiler's errors and import hints, and the prompt saying the definition is the model's own code
+outside symdex (call, do not reimplement, declare no object). Qwen3-4B:
+
+| arm | compile | behave |
+|---|---|---|
+| loop (knowledge + 3 rounds) | 7 | 4 |
+| best, first prompt | 9 | 5 |
+| best + held (the mask, no shadowing) | 8 | 4 |
+| **best, the prompt clarified** | **9** | **7** |
+| best, clarified, + held | 9 | 5 |
+
+- Compiling is nearly solved (9 of 10): focus took the noise out (task 1), the hints the import (task 7).
+- What is left is MEANING, the 4B's own: wrapping its answer in `object Equivalence { … }` though told not to (and
+  then a self-reference that does not compile, or a hand-made `contains("Equivalent")`); `split("(")` — a regex in
+  Java, so it throws. These are where a bigger model, or types, or tests in the loop come in.
+- The mask makes it WORSE here (5 against 7): refused a name, the 4B renames its wrapper object and reimplements, or
+  thinks in circles until its budget ends (once: 3000 tokens on `getParent`). With the knowledge in the prompt, a
+  hard constraint costs more than it saves — keep it off for small models, or as a check that asks again rather than
+  a mask that forces.
