@@ -21,5 +21,8 @@
   mlx-scala: the block run beside Qwen on each token, its `allowed` masking the logits; the law on Qwen3-4B
   generations: the block's allowed == QuoteK at every step.
 
+- [~] **symbols-a** — code without invented APIs, stage (a) (specs/symbols.md): `Names` port in mlx-scala (members
+  from symdex `named(S, N)`), unit laws; the measure on Qwen3-4B: invented members free vs held, overrides, compiles.
+
 Done 2026-11-03: Wordle steps 1–3 (`experiments/Wordle.sc`, spec §4): the head's set equals the reference after 2,479
 moves; the mask: 0 guesses against the hints, 0 invented words.
