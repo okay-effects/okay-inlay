@@ -139,3 +139,15 @@ vocabulary per prompt (its tokens, the markers, "other"), the block over the tok
 the prefix tokens added by a fixed map. `QwenQuoteSuite`: 160 steps of Qwen3-4B on the log, 93 of them inside a
 quote, the block's set equal to QuoteK at every one; the quotes are the log's lines; 2.8 s for the whole generation
 (81 words, 8 heads, k = 16). The block decides, not Scala code; what is left of the runtime is the token map.
+
+**Stage (c) — a standard weights file in an unmodified engine: not exactly (2026-11-04).** `HalfSuite` ran the cheap
+quote (k = 8) with weights and activations in the formats a model file uses: float32 805 of 805 positions exact;
+float16 768 of 880 (112 not even decodable); bfloat16 705 of 832 (127). The cause is the `latest` head: its scores
+are 4·128·maxLen plus 128 a position (~65 536 here) — past float16's range (65 504), and bfloat16's 8-bit mantissa
+steps by 512 there, wider than the 128 a position needs, so the latest match ties with earlier ones and they average.
+The weights themselves can be made exact in bf16 (powers of two, small integers); what breaks is any intermediate
+rounded to 16 bits — engines round matmul outputs (the scores) to the activation dtype. Beyond precision, a block
+inside a dense model's own layers needs (1) residual dims the model does not use (it uses them all), (2) the token's
+identity at the block's input (the model's residual at depth carries predictions, not the token), (3) float32 scores.
+None holds in a standard model; so the block is a SIDE model with its own residual, combined with the model's logits
+by the engine — stage (b), `WeightsPort` — and (c) is closed: an engine hook is the honest requirement.

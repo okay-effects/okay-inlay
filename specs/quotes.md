@@ -30,8 +30,9 @@ prompt) → okay-mlx's backend builds the port from the prompt's tokens.
 keys from ±1 token codes, an induction head to the matching positions, its read a mask −λ); the law: (a) == (b) on
 every step.
 
-**(c) An unmodified engine** — the block as layers of the model's own architecture in a standard weights file (boosts
-along the allowed tokens' embedding directions; approximate — measured).
+**(c) An unmodified engine** — closed 2026-11-04 (specs/dsl.md, "Stage (c)"): float16/bfloat16 break the `latest` head
+(112–127 of ~850 positions not decodable), and a dense model has no free residual dims nor the token at depth; the
+block stays a side model the engine combines (b).
 
 ## The benchmark
 

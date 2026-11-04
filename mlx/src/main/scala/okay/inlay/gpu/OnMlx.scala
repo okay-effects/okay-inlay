@@ -10,13 +10,13 @@ import okay.inlay.{Forward, Interpret, Program, Weights}
  * (`OnMlx(w)`), run on as many inputs as asked; `close` frees them. The law: decoded, what `Forward` and the
  * reference give.
  */
-final class OnMlx(val w: Weights):
+final class OnMlx(val w: Weights, dtype: Dtype = Dtype.Float32):
   _root_.mlx.Mlx.init()
   private val kept = new Scope
   private def matrix(m: Array[Array[Float]]): Arr =
     val rows = m.length
     val cols = if rows == 0 then 0 else m(0).length
-    floats(m.flatten, rows, cols)(using kept)
+    astype(floats(m.flatten, rows, cols)(using kept), dtype)(using kept)
   private val layers = w.layers.map { l =>
     val heads = l.heads.map(h => (matrix(h.qk), matrix(h.ov.transpose)))
     val mlp = if l.mlp.w1.isEmpty then None else Some((matrix(l.mlp.w1.transpose), matrix(l.mlp.w2.transpose)))
@@ -31,11 +31,12 @@ final class OnMlx(val w: Weights):
       val n = x0.length
       val d = w.layout.dims
       // −∞ above the diagonal: a position attends to itself and those before
-      val mask = floats(Array.tabulate(n * n)(k => if k % n > k / n then Float.NegativeInfinity else 0f), n, n)
-      val zero = scalar(0f)
-      var x = floats(x0.flatten, n, d)
+      val mask = astype(floats(Array.tabulate(n * n)(k => if k % n > k / n then Float.NegativeInfinity else 0f), n, n),
+        dtype)
+      val zero = astype(scalar(0f), dtype)
+      var x = astype(floats(x0.flatten, n, d), dtype)
       for (heads, mlp) <- layers do
-        var heard = zeros(Seq(n, d), Dtype.Float32)
+        var heard = zeros(Seq(n, d), dtype)
         for (qk, ovT) <- heads do
           val a = softmax(add(matmul(matmul(x, qk), transpose(x, 1, 0)), mask), 1)
           heard = add(heard, matmul(a, matmul(x, ovT)))
