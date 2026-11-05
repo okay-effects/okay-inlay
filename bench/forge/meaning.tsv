@@ -1,0 +1,81 @@
+when	model	arm	project	task	compiles	behaves	code
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-guard	anchors	true	false	def anchors(headings: List[String]): List[String] = \n  headings.map(Markdown.anchor).filter { anchor => anchor.nonEmpty }
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-guard	sameDay	true	true	def sameDay(a: Long, b: Long): Boolean = Days.day(a) == Days.day(b)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-guard	quotedList	true	true	def quotedList(xs: List[String]): String = xs.map(PolicyText.quote).mkString(", ")
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-guard	denies	true	false	def denies(text: String): Boolean = text == "deny"
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-guard	hexPrefix	true	true	def hexPrefix(text: String, n: Int): String =\n  if (n <= 0) ""\n  else Sha256.hex(text).take(n)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-guard	pages	true	true	def pages(urls: List[String]): List[String] = {\n  urls.filter(_.endsWith(".md")).map(Markdown.href(_))\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-guard	withoutFirstLine	true	true	def withoutFirstLine(text: String): String = PolicyText.remove(text, 1, 1)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-guard	relativeAll	true	true	def relativeAll(root: String, paths: List[String]): List[String] = {\n  paths.map(path => SymdexFacts.relative(root, path))\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-proof	bothWellSorted	true	true	def bothWellSorted(a: Formula, b: Formula): Boolean = Logic.wellSorted(a) && Logic.wellSorted(b)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-proof	truthOr	true	true	def truthOr(f: Formula, otherwise: Boolean): Boolean =\n  Arithmetic.truth(f) match {\n    case Some(true) => true\n    case Some(false) => false\n    case None => otherwise\n  }
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-proof	sortName	true	true	def sortName(t: Term): String = Logic.sortOf(t).map(Logic.sortKey).getOrElse("none")
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-proof	renamedOnly	true	false	def renamedOnly(a: Formula, b: Formula): Boolean = !Logic.alphaEq(a, b)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-proof	isLinear	false	false	def isLinear(t: Term): Boolean = t match {\n  case Term.Int(_) => true\n  case Term.Dec(_) => true\n  case _ => false\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-proof	intKey	false	false	def intKey(n: BigInt): String = n match {\n  case n if n == 0 => "0"\n  case n if n < 0 => s"${n.abs.key}(-)"\n  case _ => s"(${n})"\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-proof	strTerms	false	false	def strTerms(xs: List[String]): List[Term] = xs.filter(_.nonEmpty).map(syntax.str(s))
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-proof	fieldOf	false	false	def fieldOf(text: String, k: String): Option[Json] = {\n  Json.parse(text).toOption.flatMap { json =>\n    json.get(k).toOption\n  }\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	leafCount	true	true	def leafCount(v: Json): Int = Where.leaves(v).length
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	leavesJoined	true	true	def leavesJoined(v: Json): String = Where.leaves(v).mkString(",")
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	textAt	false	false	def textAt(doc: Json, path: List[String]): Option[String] = {\n  def getJsonValue(json: Json, path: List[String]): Option[Json] = path match {\n    case Nil => Some(json)\n    case head :: rest =>\n      json match {\n        case Json.Obj(map) => map.get(head).flatMap(getJsonValue(_, rest))\n        case Json.Array(arr) => if (rest.isEmpty) Some(arr.headOption.map(_.toString)) else arr.get(rest.head).flatMap(getJsonValue(_, rest.drop(1)))\n        case _ => None\n      }\n  }\n  getJsonValue(doc, path).flatMap { json =>\n    json match {\n      case Json.Str(s) => Some(s)\n      case _ => None\n    }\n  }\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	present	false	false	def present(doc: Json, path: List[String]): Boolean = {\n  def find(json: Json, path: List[String]): Option[Json] = path match {\n    case Nil => Some(json)\n    case head :: rest =>\n      json match {\n        case Json.Obj(m) => m.get(head).flatMap(find(_, rest))\n        case Json.Array(a) => if (rest.isEmpty) Some(a.headOption.getOrElse(Json.Null)) else a.findIndex(_ => find(_, rest)).map(Json.Obj(_).getOrElse(Json.Null))\n        case _ => None\n      }\n  }\n  find(doc, path).filterNot(_.isNull).isDefined\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	before	false	false	def before(a: Json, b: Json): Boolean = Where.ordered(a, b).fold(false, _ < 0)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	comparable	false	false	def comparable(a: Json, b: Json): Boolean = {\n  Where.ordered(a, b).exists(_ != None)\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	keyLength	true	false	def keyLength(n: Long): Int = {\n  val key = Data.key(n)\n  if (key.length == 12) key.length else 12\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	bothPaths	true	true	def bothPaths(path: List[String]): (String, String) = {\n  val jsonPath = Dialect.jsonPath(path)\n  val pgJsonPath = Dialect.pgJsonPath(path)\n  (jsonPath, pgJsonPath)\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	quotedOrNone	false	false	def quotedOrNone(name: String): Option[String] = {\n  Dialect.quoted(name) match {\n    case Some(s) => Some(s)\n    case None => None\n  }\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	docOrNull	false	false	import scala.quoted.*\nimport okapi.Json.*\nimport okapi.Json.Null\nimport okapi.SqlData._\n\ndef docOrNull(text: String): Json =\n  try {\n    SqlData.doc(text)\n  } catch {\n    case e: Exception => Null\n  }
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	compareSign	false	false	def compareSign(a: Option[Json], b: Option[Json]): Int = {\n  a compare b\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	okay-store	tableOfNamed	false	false	def tableOfNamed(collection: String): Option[String] = {\n  Data.named(collection).flatMap { name =>\n    SqlData.tableOf(collection).toOption\n  }\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	tokensWithoutSpaces	true	true	def tokensWithoutSpaces(s: String): Int = Tools.tokens(s.replace(" ", ""))
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	plainNames	true	true	def plainNames(symbols: List[String]): List[String] =\n  symbols.filterNot(Symbols.isLocal).map(Symbols.name)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	depth	true	true	def depth(symbol: String): Int = Symbols.names(symbol).length
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	outermost	true	false	def outermost(symbol: String): Option[String] = {\n  val parts = symbol.split('/').filter(_.nonEmpty)\n  parts.headOption\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	readSame	true	true	def readSame(a: String, b: String): Boolean = {\n  Symbols.show(a) == Symbols.show(b)\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	foundWhere	false	false	def foundWhere(out: String): Option[String] = Equivalence.verdict(out).flatMap {\n  case Right(Verdict.NotEquivalent(found, _)) => Some(found)\n  case _ => None\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	importCount	true	true	def importCount(text: String): Int = Equivalence.header(text).count(_.startsWith("import "))
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	distinctIds	false	false	def distinctIds(texts: List[String]): Set[String] = {\n  texts.flatMap(Archive.id).toSet\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	allAllowed	true	true	def allAllowed(commands: List[String]): Boolean = {\n  commands forall Hook.allowed\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	firstRefused	false	false	def firstRefused(commands: List[String]): Option[String] = {\n  commands.find { command =>\n    !Hook.allowed(command)\n  }.getOrElse(None)\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	seededAmong	false	false	def seededAmong(names: List[String]): List[String] = {\n  names.filter(CodeFacts.seeded.contains).toSet.toList.sort\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	base	symdex	descriptorLength	true	true	def descriptorLength(symbol: String): Int = {\n  Scip.descriptor(symbol).length\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-guard	anchors	true	false	def anchors(headings: List[String]): List[String] = headings.map(Markdown.anchor)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-guard	sameDay	true	true	def sameDay(a: Long, b: Long): Boolean = Days.day(a) == Days.day(b)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-guard	quotedList	true	true	def quotedList(xs: List[String]): String = xs.map(PolicyText.quote).mkString(", ")
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-guard	denies	true	true	def denies(text: String): Boolean = PolicyText.defaultOf(text) == "deny"
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-guard	hexPrefix	true	true	def hexPrefix(text: String, n: Int): String = {\n  val hash = Sha256.hex(text)\n  if (n <= 0) ""\n  else hash.take(n)\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-guard	pages	true	true	def pages(urls: List[String]): List[String] = urls.filter(_.endsWith(".md")).map(Markdown.href)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-guard	withoutFirstLine	true	true	def withoutFirstLine(text: String): String = PolicyText.remove(text, 1, 1)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-guard	relativeAll	true	true	def relativeAll(root: String, paths: List[String]): List[String] = {\n  paths.map(SymdexFacts.relative(root, _))\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-proof	bothWellSorted	true	true	def bothWellSorted(a: Formula, b: Formula): Boolean = Logic.wellSorted(a) && Logic.wellSorted(b)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-proof	truthOr	true	true	def truthOr(f: Formula, otherwise: Boolean): Boolean = Arithmetic.truth(f).getOrElse(otherwise)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-proof	sortName	true	false	def sortName(t: Term): String = Logic.sortKey(Logic.sortOf(t).get)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-proof	renamedOnly	true	false	def renamedOnly(a: Formula, b: Formula): Boolean = !Logic.alphaEq(a, b)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-proof	isLinear	true	true	def isLinear(t: Term): Boolean = Linear.lin(t).isDefined
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-proof	intKey	true	true	def intKey(n: BigInt): String = syntax.int(n).key
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-proof	strTerms	false	false	def strTerms(xs: List[String]): List[Term] = xs.filter(_.nonEmpty).map(syntax.str(s))
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-proof	fieldOf	false	false	def fieldOf(text: String, k: String): Option[Json] = {\n  val json = Json.parse(text).toOption.get\n  json.get(k).toOption\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	leafCount	true	true	def leafCount(v: Json): Int = Where.leaves(v).length
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	leavesJoined	true	true	def leavesJoined(v: Json): String = Where.leaves(v).mkString(",")
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	textAt	true	true	def textAt(doc: Json, path: List[String]): Option[String] = Where.at(doc, path).collect { case Json.Str(s) => s }
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	present	true	false	def present(doc: Json, path: List[String]): Boolean = Where.at(doc, path).isDefined
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	before	true	true	def before(a: Json, b: Json): Boolean = Where.ordered(a, b).isDefined && Where.ordered(a, b).get < 0
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	comparable	true	true	def comparable(a: Json, b: Json): Boolean = Where.ordered(a, b).isDefined
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	keyLength	true	true	def keyLength(n: Long): Int = Data.key(n).length
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	bothPaths	true	true	def bothPaths(path: List[String]): (String, String) = {\n  val jsonPath = Dialect.jsonPath(path)\n  val pgJsonPath = Dialect.pgJsonPath(path)\n  (jsonPath, pgJsonPath)\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	quotedOrNone	false	false	def quotedOrNone(name: String): Option[String] = Dialect.quoted(name)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	docOrNull	true	false	def docOrNull(text: String): Json = SqlData.doc(text)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	compareSign	true	false	def compareSign(a: Option[Json], b: Option[Json]): Int = Where.compare(a, b)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	okay-store	tableOfNamed	false	false	def tableOfNamed(collection: String): Option[String] = {\n  Data.named(collection).toOption.flatMap { name =>\n    SqlData.tableOf(collection).toOption\n  }\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	tokensWithoutSpaces	true	true	def tokensWithoutSpaces(s: String): Int = Tools.tokens(s.replace(" ", ""))
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	plainNames	true	true	def plainNames(symbols: List[String]): List[String] = symbols.filterNot(Symbols.isLocal).map(Symbols.name)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	depth	true	true	def depth(symbol: String): Int = Symbols.names(symbol).size
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	outermost	true	true	def outermost(symbol: String): Option[String] = Symbols.names(symbol).headOption
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	readSame	true	true	def readSame(a: String, b: String): Boolean = Symbols.show(a) == Symbols.show(b)
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	foundWhere	false	false	def foundWhere(out: String): Option[String] = Equivalence.verdict(out).flatMap {\n  case Right(Verdict.NotEquivalent) => Some(Equivalence.found)\n  case _ => None\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	importCount	true	true	def importCount(text: String): Int = Equivalence.header(text).count(_.startsWith("import "))
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	distinctIds	true	true	def distinctIds(texts: List[String]): Set[String] = texts.map(Archive.id).toSet
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	allAllowed	true	false	def allAllowed(commands: List[String]): Boolean = Hook.allowed(commands.headOption.getOrElse(""))
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	firstRefused	true	true	def firstRefused(commands: List[String]): Option[String] = {\n  commands.find { command =>\n    !Hook.allowed(command)\n  }\n}
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	seededAmong	true	false	def seededAmong(names: List[String]): List[String] = CodeFacts.seeded.toList.sorted
+2026-11-05T13:25:37	mlx-community/Qwen3-4B-4bit	forge	symdex	descriptorLength	true	true	def descriptorLength(symbol: String): Int = Scip.descriptor(symbol).length

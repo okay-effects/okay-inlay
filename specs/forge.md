@@ -143,3 +143,19 @@ meaning, which these delegations do not teach. Next: training tasks that ask for
 members, transformations of a member's result checked by `equivalent`, the model's repairs (error → fix) with
 `type`'s errors — and SymbolsBench grown past ten tasks so a difference of one is visible. Two runs of the baseline
 fell to a GPU error caused by another process (Metal "InnocentVictim"); the third ran after the other agent's suite.
+
+### Meaning (MeaningBench, 40 hand-written tasks, 2026-11-05)
+
+Forty tasks that ask for MEANING over four projects (`Meaning.tasks`: a composition, a filter, an edge, a failure
+turned into a value), all 40 references verified; Qwen3-4B-4bit, the usage-style prompt, no thinking, one round.
+Rows in `bench/forge/meaning.tsv`. The adapter is the transfer adapter (trained on delegations from 8 projects).
+
+| arm | compile | behave | okay-guard | okay-proof | okay-store | symdex |
+|---|---|---|---|---|---|---|
+| base | 24 | 19 | 6/8 | 3/8 | 3/12 | 7/12 |
+| forge | **35** | **27** | 7/8 | 4/8 | 7/12 | 9/12 |
+
++8 behaving of 40 — beyond one run's noise, on tasks the adapter never saw in kind: the delegations taught the API
+and the form (compile 24 → 35), and that carries part of the meaning. Still 8 that compile but do not behave: the
+gap meaning-teaching tasks must close. Next as planned: generated meaning tasks (filter, find, count, Option, Try,
+chains of two members), repairs with `type`, retrain, rerun this bench.
