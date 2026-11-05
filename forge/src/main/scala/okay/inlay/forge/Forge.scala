@@ -28,7 +28,8 @@ final class Forge(model: Adaptable, chat: Chat):
   /** a meaning task's prompt: every member it uses, declared and called as the project does */
   def meaning(src: Source, mt: MeaningTask): Array[Int] =
     val ms = mt.uses.flatMap((o, n) => src.project.members.find(m => m.owner == o && m.name == n))
-    val decls = ms.flatMap(m => src.project.declaration(m).map((s, d) => s"  $s" + (if d.nonEmpty then s"   // $d" else "")))
+    val decls = ms.flatMap(m =>
+      src.project.declaration(m).map((s, d) => s"  $s" + (if d.nonEmpty then s"   // $d" else "")))
     val calls = ms.flatMap(m => src.project.calls(m, 2)).distinct
     chat.ask(s"You write Scala 3 for the project ${src.name} (package `${mt.task.member.pkg}`, already imported). " +
       s"Write `${mt.task.signature}`: ${mt.task.text}.\n\nThe API it needs:\n${decls.mkString("\n")}\n" +

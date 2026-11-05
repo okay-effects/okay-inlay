@@ -36,7 +36,8 @@ class MeaningBench extends munit.FunSuite:
     // the references first: each must equal itself
     val refs = tasks.groupBy(_.project).toVector.flatMap((n, ts) =>
       ts.zip(sources(n).verify(ts.map(mt => mt.task -> mt.task.reference))))
-    refs.filterNot(_._2.behaves).foreach((mt, v) => println(s"  reference fails: ${mt.task.id} — ${v.detail.take(300)}"))
+    refs.filterNot(_._2.behaves)
+      .foreach((mt, v) => println(s"  reference fails: ${mt.task.id} — ${v.detail.take(300)}"))
     val good = refs.filter(_._2.behaves).map(_._1)
     println(s"references: ${good.size} of ${tasks.size} usable")
     if !sys.env.contains("MEANING_ONLY_REFS") then
@@ -56,7 +57,8 @@ class MeaningBench extends munit.FunSuite:
         held.foreach { s => s.close(); model.lora = Map.empty }
         for (mt, code, v) <- res do
           Files.writeString(history, Seq(stamp, repo, arm, mt.project, mt.task.name, v.compiles, v.behaves,
-            code.replace("\n", "\\n").replace("\t", " ")).mkString("\t") + "\n", java.nio.file.StandardOpenOption.APPEND)
+            code.replace("\n", "\\n").replace("\t", " ")).mkString("\t") + "\n",
+            java.nio.file.StandardOpenOption.APPEND)
         val byProject = res.groupBy(_._1.project).toVector.sortBy(_._1)
           .map((n, rs) => s"$n ${rs.count(_._3.behaves)}/${rs.size}").mkString(", ")
         println(s"$arm: ${res.count(_._3.compiles)} compile, ${res.count(_._3.behaves)} behave of ${res.size} " +
