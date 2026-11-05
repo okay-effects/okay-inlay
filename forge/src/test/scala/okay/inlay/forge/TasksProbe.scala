@@ -68,3 +68,20 @@ class ProjectsProbe extends munit.FunSuite:
         println(s"  first ${v.size}: ${v.count(_.behaves)} usable")
         ts.take(12).zip(v).filterNot(_._2.behaves).take(3)
           .foreach((t, d) => println(s"    out ${t.id}: ${d.detail.take(600)}"))
+
+/** the usable members of the prepared projects (their "call" tasks the verifier kept): signature and doc, for writing
+ * evaluation tasks by hand. Opt-in: PROBE=1 */
+class ApiProbe extends munit.FunSuite:
+  test("usable members, as declared"):
+    assume(sys.env.contains("PROBE"), "PROBE=1 to run")
+    val home = sys.props("user.home")
+    val bench = java.nio.file.Path.of("../bench/forge").toAbsolutePath.normalize
+    for name <- sys.env.getOrElse("PROBE_PROJECTS", "symdex").split(",") do
+      val root = Prepare.home.resolve("projects").resolve(name)
+      val cp = java.nio.file.Files.readString(Prepare.home.resolve(s"$name.cp")).trim
+      val p = Project(root, cp, s"$home/work/my/symdex/target/symdex/bin/symdex")
+      val ok = java.nio.file.Files.readAllLines(bench.resolve(s"usable-$name.txt")).toArray(Array.empty[String]).toSet
+      val tasks = Tasks.from(p).filter(t => t.kind == "call" && ok(t.id))
+      println(s"== $name: ${tasks.size}")
+      tasks.foreach(t => println(s"${t.member.pkg} | ${p.declaration(t.member).fold("")(_._1)} | " +
+        p.declaration(t.member).fold("")(_._2).take(90)))
