@@ -166,3 +166,36 @@ a head on the way out where words are needed.
 
 What the first two steps decide: step 1, where the border of language and core is in our model; step 2, whether
 the 35B has the meaning at a readable layer and which. The distillation does not begin before both are measured.
+
+## 10. The plan, fixed (the operator, 2026-11-06): path 1 — a very small core, extended by modules
+
+Decided: the core is DISTILLED from the cut model (path 1 of the two), and made extensible — a language a module,
+an ability a module. Everything else is in service of this.
+
+**What exists already** (okay-desk, branch `student` merged, its §21): the CONTRACT is the state after layer 19 of
+cut19 — the state the readers' skill file reads, never retrained; a student is any model that gives that state. A
+student of 12 of the 19 layers, LoRA (rank 64) distilled toward the contract over the desk's prompts (z-MSE 0.42 →
+0.042, 24 minutes), merged at 4 bits: 122 MB, 11/12 en and 7/12 ru with the teacher's own skill file (the teacher
+244 MB, 12/12 and 9/12). The tools: LayerInfluence, Prune, Distill (checkpoints every 500 steps), Merge. Its
+vocabulary cut (152k → 38k tokens by a corpus the 35B wrote) is the other way to the same saving as the blocks (§20
+of data.md): the blocks keep the ids and load languages on demand — the modular way — so the blocks stay, and the
+corpus goes into the English block's definition.
+
+**The steps, in order, each measured with the SAME skill file:**
+
+1. **The map by component** (running: attention and MLP of each layer silenced, the readers retrained): what the
+   contract needs. Early lines: layer 1's attention is free (12/12, 9/12 without it), its MLP is not (7/12, 4/12);
+   layer 0's attention matters most. The map says what to drop — by component, finer than a layer.
+2. **The student by the map**: the components the map calls free dropped (not whole layers only), the rest
+   distilled toward the contract with `Distill`, merged. The measure: the teacher's skill file on it; the target
+   first 12/12 and 9/12 at ~100 MB, then the floor by the same law.
+3. **Languages as modules**: the vocabulary's blocks (done) and, where the map shows the first layers are a
+   language's, an adapter per language (LoRA on those layers, trained on that language's pairs toward the
+   contract), the core frozen. A new language = its block + its adapter.
+4. **Abilities as modules**: a new skill is a new readers' file over the same contract (done for the desk's
+   questions); the facts and documents as data under exact engines; a compiled block where it pays.
+5. **Learnability as the measure**: a new readers' file trained from 50 examples of a family of tasks never seen;
+   the student that keeps this is the core.
+6. **Then the floor**: 2-bit MLPs, pruned heads, a narrower student — each under the same law.
+
+Memory on this Mac (36 GB): the 35B teacher's states, where used, are read once to disk; the student trains alone.
