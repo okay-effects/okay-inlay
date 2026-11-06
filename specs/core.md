@@ -249,3 +249,6 @@ Russian's are not needed by Russian once the bus is trained back; the others tak
 **11/12 en, 7/12 ru**. Two conclusions: the core compresses further than the map promised (−48 MB at no cost beyond
 FREE), and a component's language cannot be read from a single ablation without retraining — it is measured on the
 distilled model by the cross-lingual test. Running: all three sets (−94 MB) distilled.
+ALL THREE removed (24 components, −94 MB, a core of 73 MB of layers) and distilled (2,000 steps, rank 32): **11/12 en,
+5/12 ru**. The floor by this route at this budget of training: English nearly whole, Russian two thirds. Running:
+the same with 5,000 steps at rank 64 (the student branch's budget), to see what training alone buys back.
