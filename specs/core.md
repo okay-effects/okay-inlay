@@ -89,3 +89,48 @@ Three layers, with three different answers:
 - **Next after the map**: "a book → facts → a block" on the sample — the readers extract facts from a text that
   describes the data, the facts compiled into okay-inlay weights, a question answered with no table: a checkable
   demonstration of learning knowledge.
+
+## 8. The process: a small core distilled from a large model (2026-11-06)
+
+The aim: from a large, able model, a core that is small, understands, and learns; the knowledge and the skills
+added beside it as blocks. Every step measured; a step that lowers the measures is undone.
+
+**The core's job, exactly**: text → predicates on the bus (what readers read), nothing else: no generation, no
+facts. Three measures: READABILITY (readers over a family of tasks: programs' slots, facts from text, closure,
+diagnoses), LEARNABILITY (a new reader on an unseen family of tasks, trained from few examples — "can learn",
+measured: trained on tasks A..K, read on L from 50 examples), IGNORANCE (no table, no fact; a fact changed in the
+table changes the answer).
+
+**What to distil: the bus, not the tokens.** Logit distillation copies the generating head. The teacher (4B and
+up) gives its states at the points of decision; the student learns so that THE TEACHER'S PREDICATES READ FROM THE
+STUDENT'S BUS — a learned projection from the student's state to the teacher's, on the coordinates the readers
+use alone (the rest carry facts and generation: not copied). The loss: the bus's error on those coordinates plus
+the readers' decisions' error. Readability-preserving distillation.
+
+**The data**: generated pairs over many domains and both languages (okay-desk's Pairs, wider), labelled by the
+teacher, filtered by the exact judge; the student never sees a pair the judge refused.
+
+**The order of shrinking**, each step under the laws: (1) the cut by depth (done, 28 → 19); (2) the map by
+component (§4.1, running) → the components the readability does not need dropped; (3) the vocabulary: the
+embedding is 78 of 244 MB — the tokens of the languages used kept (~30k of 152k), the rest gone; (4) heads and
+MLP channels pruned by contribution; (5) the distillation into a narrower student (§ above), initialised from the
+pruned teacher, never from random (one Mac has neither the data nor the time for that); (6) quantization: 4 bits,
+the MLPs tried at 2; (7) after every step the three measures.
+
+**Learnability as the objective**: families of tasks held out during the distillation, and the loss given a term
+for how fast a new reader trains on them — the core optimised to be a GOOD BUS FOR FUTURE READERS, which is what
+sets this apart from compression.
+
+**The blocks around it**, handlers of effects the core knows nothing of: readers, exact engines (tables, Datalog,
+okay-inlay's weights), memory (the prefix cache, a store of facts and documents), compiled blocks of knowledge,
+and a small generating head trained over the bus where words are needed.
+
+**The journal**: at every checkpoint — readability by slot, the map by component, the bus's geometry (the
+dimensions a predicate takes, the interference between predicates): the process as a sequence of checkable
+events, not one loss curve.
+
+**Where it may land** (an estimate, not a promise): the vocabulary −60 MB; five to eight more layers out and the
+MLPs narrower: 60–80 MB; 2-bit MLPs: ~40 MB. The measures at each step say where the floor is.
+
+**First after the map**: the vocabulary (cheap, measurable, large), then the first distillation with the bus loss on
+mlx-scala (AdamW is there; the student is the same Qwen3 code with smaller sizes, its weights from the teacher).
