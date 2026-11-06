@@ -57,3 +57,35 @@ Two scales, both exact:
 
 A clean "intuition" or "reasoning" as separate weights: these are distributed; they can be measured and kept while
 shrinking, not taken out as a part. The core is minimal by measurement, not by anatomy.
+
+## 6. The logical level (the operator's question, 2026-11-06)
+
+Three layers, with three different answers:
+
+- **The mechanics** — what the forward computes — is a formal object already: `Qwen3Compute` is a program over ten
+  operations with laws on three devices; a Lean statement of it (okay-lean) would complete this layer.
+- **The semantics of the interface** — which predicates read from the bus, where: a reader is a linear functional
+  on the residual, that is a predicate ("the table is orders", "the shape is count with a condition"); the map by
+  component (§4.1) adds the structure (which components each predicate needs). This is the deconstruction to a
+  logical level: a theory of what the core GIVES, with laws. okay-inlay is the other direction — logic into weights
+  with `Forward(Compile(p)) == Interpret(p)` — so what is expressed as predicates and programs is rebuilt by
+  compilation, not by training.
+- **The inside** — why layer 7's weights do what they do — stays partial (superposition; single circuits such as
+  induction heads). The core is GROWN (trained, distilled) under the laws; the mechanisms are BUILT from logic. The
+  theory constrains and tests the core; it does not generate it.
+
+## 7. Modules that learn
+
+- **Knowledge from a book as an MLP block**: an MLP is a key–value memory, and okay-inlay's Lookup heads compile a
+  table into weights with a law — so a block CAN be made; but a block trained on text is a lossy memory no one can
+  check. The better form we have: facts as data (tables, Datalog, a store) under exact engines, compiled into
+  weights only where that pays (the closure was). "The model reads a book and builds a block" then means: readers
+  extract the facts → the store → a compiled block when needed. The hard part is the extraction from free text —
+  a skill, not a memory.
+- **A skill as a new reader**: done already — a reader trained over the frozen core, judged by the exact judge;
+  self-play (okay-desk §13) showed the judge works and the 0.6B cannot yet write its own questions. Two thirds of
+  the loop exist: the core proposes, the exact judge checks, the accepted becomes a reader or a compiled block;
+  missing: the making of training pairs by the core itself at this size (a larger asker, or a person).
+- **Next after the map**: "a book → facts → a block" on the sample — the readers extract facts from a text that
+  describes the data, the facts compiled into okay-inlay weights, a question answered with no table: a checkable
+  demonstration of learning knowledge.
