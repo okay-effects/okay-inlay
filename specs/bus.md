@@ -50,3 +50,23 @@ The linear adapter (BACKLOG 14): ridge regression from Qwen3-1.7B's states (and 
 to bus v1 on the desk's prompts; the reference skill file unchanged on the sample. The expectation stated before
 the test: the coarse predicates (the table, the shape) carry, the fine ones (a column's pointer, a value's start)
 mostly do not; the test says where the cheap adapter ends and distillation begins.
+
+## v2, outlined (the operator, 2026-11-06): modules the core USES through the bus
+
+Modules that read the bus exist (readers, engines, memory, compiled blocks: handlers of effects the core knows
+nothing of). v2 is modules the core WRITES TO and reads back — the bridge's write regime — and the core must be
+taught to use the bus for that. The one rule that makes it a framework: the core is taught a KIND OF SIGNAL, never a
+module — a fact of a table (a row, a number, yes/no, an entity) encoded one fixed way at one kind of position; taught
+once, any module of that kind plugs in with no training, as any skill plugs into the read side today.
+
+- The ops: `Write(position, vector)`, `Mask(logits)` added to `Read`; the kinds of signal with their encodings; the
+  version in a module's file.
+- A module: a handler of an effect, and for a writing one, an encoder of its result into a kind of signal (a compiled
+  inlay block's encoder is its weights).
+- The training per kind: pairs "the teacher saw the fact in the text, the student gets it through the bus alone",
+  the loss on the teacher's states after that point (okay-desk `Distill` with the write in the data); the exact
+  judge; the kit with a threshold.
+- The first experiment: a question needing a fact not in the prompt, the fact given only as a vector on the bus
+  (compiled by okay-inlay from the table's row); after training, the readers read the same slot as with the fact in
+  the text. Holds on the sample → the framework is real; fails → the text protocol stays (a module's result appended
+  as tokens: always works, costs prompt length).
