@@ -134,3 +134,35 @@ MLPs narrower: 60–80 MB; 2-bit MLPs: ~40 MB. The measures at each step say whe
 
 **First after the map**: the vocabulary (cheap, measurable, large), then the first distillation with the bus loss on
 mlx-scala (AdamW is there; the student is the same Qwen3 code with smaller sizes, its weights from the teacher).
+
+## 9. The plan, refined (the operator, 2026-11-06): a core of no language, a teacher of 35B
+
+The aim restated: a small core of MEANING tied to no language; every language a module of its own; every skill and
+every piece of knowledge a module of its own. Where language sits in a transformer: the embedding and the first
+layers are a language's lexicon, the middle layers are where multilingual models' representations meet across
+languages, the last prepare the next token. So the core of no language is the middle; a language module is a
+block of the vocabulary (§20 of okay-desk's data.md, done) plus an adapter of the first K layers on the way in, and
+a head on the way out where words are needed.
+
+1. **The measure of "no language"** (now, on the cut 0.6B): readers trained on English pairs alone, read on
+   Russian, layer by layer. Where the cross-lingual readability is high the bus is already meaning; below it,
+   language. This says where the core begins and how many layers the language module takes.
+2. **The teacher, 35B** (Qwen3.6-35B-A3B, run by mlx-scala; `Qwen35.hook` gives its layers): its states on the
+   same pairs, readers trained on them by layer — the ceiling of readability and its best layer: the predicates
+   defined by the teacher. The data: generated pairs in several languages (English, Russian, one or two unrelated
+   ones to test the independence), labelled by the teacher, filtered by the exact judge.
+3. **Readability-preserving distillation of the bus** (§8): the student the cut 0.6B first, smaller after; a
+   projection from the student's state to the teacher's subspace of predicates learned with the student; the loss:
+   the error on those coordinates, the teacher's readers' decisions, and a cross-lingual term (one question in
+   two languages → near states on the core's bus). A full fine-tune of 0.6B fits an M4 Max (weights and Adam ~8 GB).
+4. **Language modules**: the vocabulary's blocks (done) and an adapter of the first K layers per language (LoRA,
+   the core frozen; K from step 1). A new language = a block + an adapter trained on that language's pairs against
+   the same bus; the core untouched; checked by readers trained on the other languages.
+5. **Skills and knowledge as modules**: readers, exact engines, stores, compiled inlay blocks — handlers of
+   effects (as now).
+6. **The core shrunk under the laws** (§8): the map by component (running), pruning, 4 and 2 bits; learnability
+   (a new reader from 50 examples on a held-out family) the deciding measure.
+7. **The journal** at every checkpoint: readability by slot and by language, the map, the bus's geometry.
+
+What the first two steps decide: step 1, where the border of language and core is in our model; step 2, whether
+the 35B has the meaning at a readable layer and which. The distillation does not begin before both are measured.
