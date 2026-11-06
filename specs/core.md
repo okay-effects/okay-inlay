@@ -252,3 +252,12 @@ distilled model by the cross-lingual test. Running: all three sets (−94 MB) di
 ALL THREE removed (24 components, −94 MB, a core of 73 MB of layers) and distilled (2,000 steps, rank 32): **11/12 en,
 5/12 ru**. The floor by this route at this budget of training: English nearly whole, Russian two thirds. Running:
 the same with 5,000 steps at rank 64 (the student branch's budget), to see what training alone buys back.
+
+**The core chosen and merged (2026-11-06, late).** The honest distillations — no adapter on the removed projections
+(mlx-scala `Lora.except`), so the merge keeps nothing of them: FREE+RU (−48 MB) **12/12 en, 7/12 ru** (z-MSE 0.049;
+the same as with adapters everywhere — the components are truly not needed); ALL THREE (−94 MB) 11/12, 4/12
+(z-MSE 0.087; with adapters everywhere and 5,000 steps at rank 64 it reached 12/12, 6/12 — the adapters were doing
+the removed components' work). THE CORE: FREE+RU removed, distilled, merged at 4 bits — **12/12 en, 6/12 ru** with
+the teacher's skill unchanged (the merge at 4 bits costs one Russian question, as §21 found). Its files leave the
+removed components out (SplitWeights; okay-llm's forward skips what the file has not — SkipSuite: absent ==
+silenced). Deployed as the page's default, `model-core`, beside the 12-layer student (`model-small`) and the cut.
