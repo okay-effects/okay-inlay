@@ -234,3 +234,13 @@ more): attention 2, 4, 10, 12, 18; MLP 3, 4, 11, 15 — 34 MB, a Russian module'
 layers, an English page ~107 MB with its vocabulary, Russian a module of ~36 MB (its components and its block).
 The components were silenced one at a time; the next step assembles the sets and measures them whole, then
 distils what the removal cost back toward the contract.
+
+**The sets whole, and distilled back (2026-11-06 evening).** The map's sets silenced together, measured whole on the
+sample (the whole model 12/12 en, 9/12 ru): the teacher's skill unchanged / the readers retrained — FREE (4
+components, −14 MB): 11/2 / 10/6; FREE+NEAR (15, −59 MB): 6/1 / 6/3; FREE+RU (13, −48 MB): 9/5 / 6/3; all three (24,
+−94 MB): 6/1 / 6/3. Removals compound: what is free alone is not free together, and Russian goes first. Then the
+contract DISTILLED BACK (Distill: LoRA rank 32 on every projection toward the teacher's state at layer 19, 2,000
+steps, 13 minutes, z-MSE 0.026): FREE removed and distilled, the teacher's skill unchanged — **12/12 en, 7/12 ru**.
+So the rule of §4.3 holds in practice: a component is removed with the bus trained back, never alone; the cost of
+the free set after distillation is two Russian questions. Next: FREE+RU (the module hypothesis: English whole with
+Russian's components gone?) and FREE+NEAR (−59 MB), each distilled the same way.
