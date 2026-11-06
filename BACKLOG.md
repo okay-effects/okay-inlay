@@ -44,3 +44,16 @@
 
 13. **the bridge** (operator, 2026-11-04) — learned interfaces to exact machines: read / mask / write regimes, compiled
     priors, crystallization; specs/bridge.md; bridge-1..3 in SPRINT.
+14. **a standard bus and a compatibility layer** (operator, 2026-11-06; beside specs/core.md §4.3 "the bus as a
+    contract" and §8's projection) — any core, any language, the same skill files: (L0) tokens and languages as
+    modules (okay-desk §20 blocks, readers addressing positions by words/characters, not token ids); (L1) a core;
+    (L2) a BUS ADAPTER per core — identity, a linear map, or distillation; (L3) the bus vN as a versioned spec: width,
+    normalisation (per-dimension mean and spread), the prompt template, where readers read; (L4) skills (readers,
+    compiled blocks) addressing L3 only; (L5) the typed protocol (Query, Datalog, effects). The bus's API is okay-desk's
+    `Read` effect (States, Logits, Encode, Prompt, Note) — to be the standard, write ops added (add a vector at a
+    position, a logits mask). A TCK: prompts, positions and the reference readers' answers; a core with its adapter is
+    bus-vN compatible at ≥ a threshold. FIRST, an hour's test of whether a compatibility layer can be a matrix: ridge
+    regression from Qwen3-1.7B, then Qwen3.5-0.8B (another layer family), to bus v1 (cut19's layer 19) on the desk's
+    prompts; the teacher's skill file UNCHANGED on 12 + 12 questions (target 12/12, 9/12). Else: relative
+    representations (similarities to standard anchor texts — no training), or distillation. Hard parts: writing to the
+    bus (a core must be trained to listen), cross-family depth, the prompt template inside the contract.
