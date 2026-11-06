@@ -44,7 +44,7 @@
 
 13. **the bridge** (operator, 2026-11-04) — learned interfaces to exact machines: read / mask / write regimes, compiled
     priors, crystallization; specs/bridge.md; bridge-1..3 in SPRINT.
-14. **a standard bus and a compatibility layer** (operator, 2026-11-06; beside specs/core.md §4.3 "the bus as a
+14. **a standard bus and a compatibility layer** (operator, 2026-11-06; SPEC specs/bus.md v1 written 2026-11-06, L0.5 the language components added, the kit, writes to the bus kept for v2; beside specs/core.md §4.3 "the bus as a
     contract" and §8's projection) — any core, any language, the same skill files: (L0) tokens and languages as
     modules (okay-desk §20 blocks, readers addressing positions by words/characters, not token ids); (L1) a core;
     (L2) a BUS ADAPTER per core — identity, a linear map, or distillation; (L3) the bus vN as a versioned spec: width,
