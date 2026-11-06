@@ -244,3 +244,8 @@ steps, 13 minutes, z-MSE 0.026): FREE removed and distilled, the teacher's skill
 So the rule of §4.3 holds in practice: a component is removed with the bus trained back, never alone; the cost of
 the free set after distillation is two Russian questions. Next: FREE+RU (the module hypothesis: English whole with
 Russian's components gone?) and FREE+NEAR (−59 MB), each distilled the same way.
+FREE+RU removed and distilled: **12/12 en, 7/12 ru** — the same as FREE alone: the nine components the map called
+Russian's are not needed by Russian once the bus is trained back; the others take their work. FREE+NEAR (−59 MB):
+**11/12 en, 7/12 ru**. Two conclusions: the core compresses further than the map promised (−48 MB at no cost beyond
+FREE), and a component's language cannot be read from a single ablation without retraining — it is measured on the
+distilled model by the cross-lingual test. Running: all three sets (−94 MB) distilled.
