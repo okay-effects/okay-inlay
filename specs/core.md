@@ -208,3 +208,29 @@ language appears. Early map: layer 1's attention free; layer 2's attention and l
 English without them, 6/12 Russian); layer 0 and the MLPs of layers 1–2 the core's. The components are silenced one
 at a time; removed together they may compound — the student is assembled by the map and measured whole with the
 same skill file before any component is called a module's.
+
+## 11. The map by component — the result (2026-11-06)
+
+cut19, each component silenced alone, the readers retrained on the variant (600 pairs), the sample (the whole model
+12/12 en, 9/12 ru); a cell is en/ru:
+
+| layer | attention | MLP | | layer | attention | MLP |
+|---|---|---|---|---|---|---|
+| 0 | 6/3 core | 10/6 core | | 10 | 12/6 ru | 11/5 core |
+| 1 | 12/9 free | 7/4 core | | 11 | 7/5 core | 12/7 ru |
+| 2 | 12/6 ru | 7/4 core | | 12 | 12/6 ru | 12/8 near |
+| 3 | 12/8 near | 12/6 ru | | 13 | 11/7 core | 10/6 core |
+| 4 | 12/7 ru | 12/5 ru | | 14 | 11/6 core | 11/7 core |
+| 5 | 12/8 near | 11/7 core | | 15 | 7/6 core | 12/7 ru |
+| 6 | 10/6 core | 12/8 near | | 16 | 12/9 free | 12/9 free |
+| 7 | 12/8 near | 12/8 near | | 17 | 10/6 core | 12/8 near |
+| 8 | 12/8 near | 12/8 near | | 18 | 12/6 ru | 12/8 near |
+| 9 | 12/9 free | 12/8 near | | | | |
+
+Read by language: FREE (nothing lost): attention 1, 9, 16, MLP 16 — 14 MB. NEAR FREE (English whole, Russian one
+question): attention 3, 5, 7, 8; MLP 6, 7, 8, 9, 12, 17, 18 — 45 MB. RUSSIAN'S (English whole, Russian two or
+more): attention 2, 4, 10, 12, 18; MLP 3, 4, 11, 15 — 34 MB, a Russian module's. THE CORE (both lose): attention 0,
+6, 11, 13, 14, 15, 17; MLP 0, 1, 2, 5, 10, 13, 14 — 73 MB. So the shape, if the map adds up: a core of ~73 MB of
+layers, an English page ~107 MB with its vocabulary, Russian a module of ~36 MB (its components and its block).
+The components were silenced one at a time; the next step assembles the sets and measures them whole, then
+distils what the removal cost back toward the contract.
