@@ -199,3 +199,12 @@ corpus goes into the English block's definition.
 6. **Then the floor**: 2-bit MLPs, pruned heads, a narrower student — each under the same law.
 
 Memory on this Mac (36 GB): the 35B teacher's states, where used, are read once to disk; the student trains alone.
+
+**A language's components (the operator, 2026-11-06).** The map is read by language: a component the readers need
+in every language is the CORE; a component needed in one language and free in the others belongs to THAT
+LANGUAGE'S MODULE, beside its block of the vocabulary — its weights in the module's file, run when the module is
+loaded, zero when not (as the map silenced it). The module is loaded by the same sign as the block: a token of the
+language appears. Early map: layer 1's attention free; layer 2's attention and layer 3's MLP Russian's (12/12
+English without them, 6/12 Russian); layer 0 and the MLPs of layers 1–2 the core's. The components are silenced one
+at a time; removed together they may compound — the student is assembled by the map and measured whole with the
+same skill file before any component is called a module's.
