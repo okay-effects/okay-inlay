@@ -19,6 +19,7 @@ object Interpret:
         f.name -> (if !Builtin.isBuiltin(f) then r.getOrElse(f.name, none(f)) else f.name match
           case "pos" => Val.B(Some(at))
           case "prev" => Val.B(Some(at - 1))
+          case "next" => Val.B(Some(at + 1))
           case back =>
             val d = back.stripPrefix("back").toInt
             Val.B(if at - d >= 1 then Some(at - d) else None))
@@ -83,6 +84,8 @@ object Interpret:
     case Guard.Off(f) => r(f.name) == Val.F(false)
     case Guard.In(f, v) => r(f.name) match { case Val.M(s) => s(v); case _ => false }
     case Guard.NotIn(f, v) => r(f.name) match { case Val.M(s) => !s(v); case _ => true }
+    case Guard.Has(f) => r(f.name) != Val.B(None)
+    case Guard.Lacks(f) => r(f.name) == Val.B(None)
 
   /** the fields one layer's rules write at a record: none where no rule fires */
   def rules(rs: Seq[Rule], r: Record): Seq[(String, Val)] =

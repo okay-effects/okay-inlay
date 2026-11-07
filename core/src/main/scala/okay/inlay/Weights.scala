@@ -118,6 +118,8 @@ object Compile:
           case Guard.Off(f) => row(lay.at(f)) -= 1
           case Guard.In(f, v) => row(lay.at(f) + f.values.indexOf(v)) += 1; positive += 1
           case Guard.NotIn(f, v) => row(lay.at(f) + f.values.indexOf(v)) -= 1
+          case Guard.Has(f) => row(lay.at(f) + f.present) += 1; positive += 1
+          case Guard.Lacks(f) => row(lay.at(f) + f.present) -= 1
         }
         (row, positive)
       // AND of the guards (and of `also`, a 0/1 dim), never at the start: 1 when all hold, else ≤ 0
@@ -244,35 +246,40 @@ object Forward:
 
   /** the layers over the embedded positions (the start first) */
   def layers(w: Weights, x0: Array[Array[Float]]): Array[Array[Float]] =
-    val dims = w.layout.dims
     var xs = x0
     for l <- w.layers do
       val nz = xs.map(nonZero)
-      val heard = xs.indices.map { i =>
-        val total = new Array[Float](dims)
-        for h <- l.heads do
-          // the query xᵢᵀ qk, a score against each position up to i, softmax, the copies averaged
-          val q = spread(h.qk, xs(i), nz(i), dims)
-          val seen = if w.causal then 0 to i else xs.indices
-          val scores = seen.map(j => dot(q, xs(j)))
-          val top = scores.max
-          val e = scores.map(s => math.exp((s - top).toDouble).toFloat)
-          val sum = e.sum
-          for j <- seen if e(j) != 0f do
-            val v = spread(h.ovT, xs(j), nz(j), dims)
-            val wj = e(j) / sum
-            for k <- 0 until dims do total(k) += wj * v(k)
-        total
-      }
-      xs = xs.indices.map(i => Array.tabulate(dims)(k => xs(i)(k) + heard(i)(k))).toArray
-      if l.mlp.w1.nonEmpty then
-        val n = l.mlp.w1.length
-        xs = xs.map { x =>
-          val hidden = spread(l.mlp.w1T, x, nonZero(x), n).map(math.max(_, 0f))
-          val out = spread(l.mlp.w2T, hidden, nonZero(hidden), dims)
-          Array.tabulate(dims)(k => x(k) + out(k))
-        }
+      xs = xs.indices.map(i => row(w, l, xs.toIndexedSeq, nz.toIndexedSeq, i)).toArray
     xs
+
+  /** ONE POSITION THROUGH ONE LAYER: position i's output, from the layer's inputs at the positions it sees (`nz`: each
+   * input's non-zero dims). `layers` is this at every position; a machine (`Machine`) runs it at the new position
+   * only, the earlier ones kept — a causal program's earlier positions never change */
+  def row(w: Weights, l: LayerW, xs: IndexedSeq[Array[Float]], nz: IndexedSeq[Array[Int]], i: Int): Array[Float] =
+    val dims = w.layout.dims
+    val total = new Array[Float](dims)
+    for h <- l.heads do
+      // the query xᵢᵀ qk, a score against each position up to i, softmax, the copies averaged
+      val q = spread(h.qk, xs(i), nz(i), dims)
+      val seen = if w.causal then 0 to i else xs.indices
+      val scores = seen.map(j => dot(q, xs(j)))
+      val top = scores.max
+      val e = scores.map(s => math.exp((s - top).toDouble).toFloat)
+      val sum = e.sum
+      for j <- seen if e(j) != 0f do
+        val v = spread(h.ovT, xs(j), nz(j), dims)
+        val wj = e(j) / sum
+        for k <- 0 until dims do total(k) += wj * v(k)
+    val x = Array.tabulate(dims)(k => xs(i)(k) + total(k))
+    if l.mlp.w1.isEmpty then x
+    else
+      val n = l.mlp.w1.length
+      val hidden = spread(l.mlp.w1T, x, nonZero(x), n).map(math.max(_, 0f))
+      val out = spread(l.mlp.w2T, hidden, nonZero(hidden), dims)
+      Array.tabulate(dims)(k => x(k) + out(k))
+
+  /** the dims where x is not zero (a row's, for `row`) */
+  def nonZeroDims(x: Array[Float]): Array[Int] = nonZero(x)
 
   private val tolerance = 1e-4f
   private def near(a: Float, b: Float) = math.abs(a - b) < tolerance

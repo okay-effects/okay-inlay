@@ -35,10 +35,13 @@ final case class Many(name: String, values: Vector[String]) extends Field:
 object Builtin:
   def pos(bits: Int): Bits = Bits("pos", bits)
   def prev(bits: Int): Bits = Bits("prev", bits)
+  /** the next position (`pos` + 1): where a step's record lands — the address of a cell a machine writes (needs
+   * 2^bits > maxLen) */
+  def next(bits: Int): Bits = Bits("next", bits)
   /** the position `d` back (none before the first) */
   def back(d: Int, bits: Int): Bits = Bits(s"back$d", bits)
   def isBuiltin(f: Field): Boolean =
-    f.isInstanceOf[Bits] && (f.name == "pos" || f.name == "prev" || f.name.matches("back[1-9][0-9]*"))
+    f.isInstanceOf[Bits] && (f.name == "pos" || f.name == "prev" || f.name == "next" || f.name.matches("back[1-9][0-9]*"))
 
 /** a field's value at a position */
 enum Val:
@@ -56,6 +59,9 @@ enum Guard:
   /** a value in a set, or not */
   case In(field: Many, value: String)
   case NotIn(field: Many, value: String)
+  /** a pointer present, or none (a machine's NIL) */
+  case Has(field: Bits)
+  case Lacks(field: Bits)
 
   def reads: Field = this match
     case Is(f, _) => f
@@ -64,6 +70,8 @@ enum Guard:
     case Off(f) => f
     case In(f, _) => f
     case NotIn(f, _) => f
+    case Has(f) => f
+    case Lacks(f) => f
 
 /** what a rule writes */
 enum Write:
@@ -133,7 +141,7 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
       case (Flag(_), Flag(_)) => true
       case (Many(_, x), Many(_, y)) => x == y
       case _ => false
-    for b <- inputs.collect { case b: Bits if Builtin.isBuiltin(b) => b } if (1 << b.bits) < maxLen do
+    for b <- inputs.collect { case b: Bits if Builtin.isBuiltin(b) => b } if (1 << b.bits) < maxLen || b.name == "next" && (1 << b.bits) <= maxLen do
       out += s"${b.name}: ${b.bits} bits do not reach maxLen $maxLen"
     if inputs.map(_.name).distinct.size != inputs.size then out += "an input given twice"
     for (l, n) <- layers.zipWithIndex do
