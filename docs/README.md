@@ -17,6 +17,7 @@ a test in this repository or in okay-desk, and the page that says it names which
 | [guide.md](guide.md) | Writing programs with the DSL: fields, heads, rules, compiling, running, checking — with working code |
 | [api.md](api.md) | Reference of the core library: every public type and method, how each op is compiled |
 | [experiments.md](experiments.md) | The experiments (`experiments/*.sc`): CEK, effect handlers, Datalog, DPLL, Wordle… and their numbers |
+| [effects.md](effects.md) | Effects: handlers with multi-shot continuations compiled into weights; the weights as one handler of a program |
 | [modules.md](modules.md) | The other sbt modules: `mlx` (the weights on Apple's GPU, the decode port), `forge`, `web`, the benches |
 | [bridge-and-bus.md](bridge-and-bus.md) | Exact blocks beside a real model: readers, the bridge, the model core, the bus and its adapter |
 | [okay-desk.md](okay-desk.md) | The first application: chat with your data in the browser, built on all of the above |

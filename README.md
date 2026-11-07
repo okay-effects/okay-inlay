@@ -7,7 +7,7 @@ exactly, and checks every program against an ordinary interpreter. It is a Scala
 and a research repository on what such exact blocks can do beside a real language model.
 
 📖 **[Documentation](docs/README.md)** · [Concepts](docs/concepts.md) · [Guide](docs/guide.md) ·
-[API](docs/api.md) · [Experiments](docs/experiments.md) · [Results](docs/results.md)
+[API](docs/api.md) · [Effects](docs/effects.md) · [Experiments](docs/experiments.md) · [Results](docs/results.md)
 
 ## Why
 
