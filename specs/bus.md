@@ -109,6 +109,13 @@ Fixed, run by a script, no human choices:
   bus v1 on the desk's prompts; the reference skill file unchanged. Stated before the test: the coarse readings (the
   table, the shape) carry, the fine ones (a column's pointer, a value's start) mostly do not; the test says where
   the cheap adapter ends and distillation begins.
+- **RESULT (2026-11-07, okay-desk specs/data.md §31)**: Qwen3-1.7B layer 19 → bus v1 by ridge, R² 0.906 on held-out
+  reading points; the reference skill UNCHANGED: the sample 13/13 en, 13/13 ru, the held-out pairs 95.3% whole
+  (cut19 itself 97.7%). A linear map carries the bus within one family. But the CONTROL — the states replaced by a
+  constant — reads 91.3% and the whole sample: the exact rules decide most of the desk's measure now, and the kit
+  (§5) must add questions they cannot decide (nothing named, a value only translated, a judgement) before it can
+  tell a good adapter from none. The prediction "fine readings do not carry" was not tested by this set; next, that
+  set, then Qwen3.5-0.8B (another tokenizer).
 - **Relative coordinates**, in parallel: a state described by its similarities to the states of fixed anchor texts,
   computed the same way in every model — no training, and possibly a definition of the bus that names no model. If
   it carries at least what ridge carries, v2 considers defining the bus by anchors instead of by the reference.
