@@ -34,8 +34,29 @@ final case class Machine(step: Program, carry: Seq[(Field, Field)], halted: Reco
       done = halted(state)
     Machine.Run(trace.result(), state, steps)
 
+  /** A WIDE MACHINE: many processors (slots) a round — the positions of a round one per slot, in order, each slot's
+   * next state its own record's outputs named by `carry`; rounds until `stop` holds of all the slots' states. A
+   * slot's record sees the earlier positions, this round's earlier slots among them (prefix counts: ranks); a step
+   * needing every slot of a round reads the round before (a machine of two phases a turn: `OrParallel`) */
+  def runWide(prefix: Vector[Record], starts: Vector[Record], runner: Machine.Runner, maxRounds: Int,
+      stop: Vector[Record] => Boolean): Machine.WideRun =
+    prefix.foreach(runner.next)
+    val trace = Vector.newBuilder[Record]
+    var states = starts
+    var rounds = 0
+    while !stop(states) do
+      require(rounds < maxRounds, s"no stop in $maxRounds rounds")
+      states = states.map { s =>
+        val out = runner.next(s)
+        trace += out
+        carry.map((o, i) => i.name -> out(o.name)).toMap
+      }
+      rounds += 1
+    Machine.WideRun(trace.result(), states, rounds)
+
 object Machine:
   final case class Run(trace: Vector[Record], last: Record, steps: Int)
+  final case class WideRun(trace: Vector[Record], states: Vector[Record], rounds: Int)
 
   /** a step at the newest position: its inputs given, its record (every field) returned; the earlier kept */
   trait Runner:

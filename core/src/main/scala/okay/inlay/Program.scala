@@ -174,12 +174,15 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
       for w <- headWrites do
         if known(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name
       val ruleWrites = l.rules.flatMap(_.sets.map(_.target)).distinct
-      val gathered = l.heads.collect { case h: Lookup if h.all => h.copy.map(_._1.name) }.flatten.toSet
+      // what this layer's MLP decodes (a gathered set, a count: the head writes a share, the MLP the value) — not
+      // yet there for the same layer's rules
+      val gathered = (l.heads.collect { case h: Lookup if h.all => h.copy.map(_._1.name) }.flatten ++
+        l.heads.collect { case c: Count => c.dst.name }).toSet
       for r <- l.rules do
         r.guards.foreach(g => read(g.reads, "a rule"))
         for f <- r.guards.map(_.reads) ++ r.sets.collect { case Write.Union(_, ss) => ss }.flatten
             if gathered(f.name) do
-          out += s"layer $n: ${f.name} is gathered by this layer's head; a rule reads it in the next layer"
+          out += s"layer $n: ${f.name} is decoded by this layer's MLP (a gathered set, a count); a rule reads it in the next layer"
         r.sets.foreach { case Write.Copy(d, s) =>
             read(s, "a rule")
             (d, s) match
