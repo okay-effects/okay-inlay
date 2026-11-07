@@ -63,3 +63,7 @@
     its space (schema, point, enumerate, random, exact run, phrases, slots, parts/assemble) and gets pairs, reading
     with abstention and the measure by constructor from `Kit`; tables (okay-desk's Space) the first instance, units and
     the calendar the second; the test: linear probes on bus v1's states for the second family (bus.md §5's kit).
+16. **DPLL in the DSL** (2026-11-08) — experiments/Dpll.sc as a wide machine; its heads score a weighted count
+    (false literals against a clause's length: λ·(#false − |C| − |C|·#true)), not equality: the DSL needs a head of
+    threshold scores (a score linear in a set's members, its interpreter's meaning stated) — then conflicts and unit
+    propagation over all clauses and branches at once, the law against brute force as for `OrParallel`.

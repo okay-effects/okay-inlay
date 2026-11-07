@@ -8,9 +8,10 @@ The sbt build (`build.sbt`, Scala 3.3.8, `-Werror -Wunused:all`):
 | `mlx` | `okay-inlay-mlx` | `core`, mlx-scala 0.1.0, mlx-scala-llm 0.1.0 | the weights on Apple's GPU; the quote block beside Qwen; the benches against real models |
 | `forge` | `okay-forge` | `mlx` | training a small model for a project: tasks from symdex, verification, LoRA in Scala |
 | `bridge` (JVM + JS) | `okay-inlay-bridge` | `core`, okay-simple's `okay-effects-machine` 0.1.1 | the bridge as a program of effects: reading and deducing as effects, the deducers (search, the reference, the weights) as handlers ([effects.md](effects.md)) |
+| `mcp` | `okay-inlay-mcp` (not published) | `bridge`, okay-mcp 0.1.0 | the bridge as an MCP tool (`above`) over stdio |
 | `web` | `okay-inlay-web` (not published) | `bridge` (JS) | the browser smoke: the bridge program in a page |
 
-`root` aggregates `core`, `bridge`, `mlx` and `forge` (not `web`).
+`root` aggregates `core`, `bridge`, `mcp`, `mlx` and `forge` (not `web`).
 
 **mlx-scala's native library.** `mlx` and `forge` fork their JVMs with `-Dokm.lib=<dir>/libokm.dylib`, the
 directory being `$MLX_SCALA_LIB` or `../mlx-scala/native-lib/out/lib` (built by mlx-scala's `native-lib/build.sh`).
@@ -59,6 +60,7 @@ block runs in float32 beside the model, through an engine hook, not inside a hal
 | `ForgeBench` | `FORGE=1` | LoRA on delegation tasks, then SymbolsBench again |
 | `MaskBench` | `MASK=1` | bridge-2: LoRA plain against LoRA under the mask |
 | `DomainBench` | `DOMAINS=1` | readers for the `Units` domain on cut19's bus: keywords, probes, margins, hybrid |
+| `ModelBridgeBench` | `MODEL_BRIDGE=1` | the bridge with Qwen3.5-4B reading (`ModelJudge`: ask, probe, both) and the closure on the GPU |
 
 Example: `BRIDGE=1 BRIDGE_THINK=1 sbt "mlx/testOnly okay.inlay.gpu.BridgeBench"`. Each bench's other variables
 (model, layer, sizes) are documented at the top of its file.

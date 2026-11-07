@@ -91,6 +91,14 @@ experiments give the choice effect a **parallel handler**:
   `false`; children are allocated without conflicts by prefix counts (a COUNT head); `REJECT` recycles a slot; a
   COUNT reads the number of solutions. All branches advance in the same turn: 4–14 parallel turns against 15–70
   sequential steps on 3-variable SAT.
+In the library too: `OrParallel` (`core/.../OrParallel.scala`) is this machine as a **wide** `Machine` —
+`Machine.runWide` runs a round of positions, one a slot. A turn is two rounds: in phase A each slot fetches its
+instruction, and `Count` heads give the ranks of this turn's requesters and free slots; in phase B a free slot of rank
+k reads the requester of rank k from phase A (`Lookup` by turn and rank) and every slot's transition is computed. Five
+layers, 1,065 neurons. `OrParallelSuite`: on eight formulas the weights' trace equals the reference's round by round,
+and the solutions equal brute force (4–14 turns, as in the experiment). Writing it found a hole in the DSL: a `Count`'s
+value is decoded by its layer's MLP, so a rule of the same layer cannot read it — `Program.problems` now says so.
+
 - `Dpll.sc` — the same handler for DPLL: conflict detection and unit propagation are heads over all clauses and all
   branches at once; a 20-variable UNSAT formula refuted in 15 branch nodes against 1,048,576 leaves.
 - `Branching.sc`, `Gated.sc` — the handler takes advice: a model's guess of which variable and which value first,
@@ -164,10 +172,18 @@ the DSL's reference, the compiled weights on the CPU (JVM or the browser), the s
 says; `BridgeOnMlxSuite`: the GPU the same. The browser page (`web/`) is the same program, run with the rules and the
 weights.
 
+**A model as the reader.** `okay.inlay.gpu.ModelJudge` (module `mlx`) makes a language model the handler of `Judge`:
+ASK (the model asked whether x is the superior of y, both orders), a PROBE (a linear probe on the residual at the two
+names and the last token), and BOTH (the two summed, each over its spread). `ModelBridgeBench` on Qwen3.5-4B, texts in
+phrasings the probe never saw, the closure on the GPU: BOTH read 100% of the sentences and gave the gold's whole answer
+(yes, the lines it rests on, the cycles) on 10 of 10 texts; ASK alone 6 of 10, the probe alone 2 of 10.
+
+**An MCP tool.** Module `mcp` serves the program over the Model Context Protocol (okay-mcp, stdio): the tool `above`
+runs `Bridge.above` with the rules reading and the compiled closure deducing — one more front of the same program, as
+the tests, the GPU and the browser are.
+
 ## What is not done
 
-- The CEK machine with handlers is in the DSL (`Cek`); the search machines (or-parallel, DPLL) are still
-  hand-built scripts — they need a step program over many positions at once (slots), not one appended position.
-- The bridge's readers from a model (a probe, the model asked) are functions in `ClosureBench`, not yet handlers in
-  `bridge`; an MCP tool as one more front of the same program is not built.
+- DPLL is still a hand-built script: its heads score a weighted count (false literals against a clause's length), not
+  equality — the DSL needs a head of threshold scores for it (BACKLOG 16).
 - A UPLC-shaped CEK (delay/force, builtins as host effects) is planned (BACKLOG 4).

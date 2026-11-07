@@ -166,3 +166,11 @@ one layer: two heads (the term node at C, the cell at ADDR) and 22 rules; 3,909 
 bits for 1,024 positions. `CekSuite`: the six programs, the weights' trace equal to the reference's step by step, the
 answers equal to the ordinary machine's; ∃x∃y∃z in 822 steps, as the experiment. The search machines (or-parallel,
 DPLL: many slots a turn) are not yet in the library.
+
+**Or-parallel search, a wide machine (2026-11-08).** `Machine.runWide`: a round of positions, one a slot. `OrParallel`
+writes experiments/OrParallel.sc's machine in it — two phases a turn (A: the instruction, the ranks by `Count`; B: a
+free slot reads the requester of its rank from phase A, every slot's transition), 5 layers, 1,065 neurons;
+`OrParallelSuite` equal to the reference and brute force on 8 formulas. A DSL hole found on the way and closed: a
+`Count`'s value is decoded by its layer's MLP, so a rule of the same layer read zeros on the weights while the
+reference read the count — `Program.problems` now refuses it, as it refused a gathered set. DPLL waits for a head of
+threshold scores (BACKLOG 16).

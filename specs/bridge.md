@@ -206,7 +206,8 @@ or unreachable; 6 instances per n, 2 of them with a cycle:
   BUILT 2026-11-08 (module `bridge`, docs/effects.md): `Judge` and `Deduce` as okay-simple effects, `Bridge.above` the
   program; the readers (rules, the gold, any function) and the deducers (plain search, the DSL's reference, the
   weights on the CPU, the browser and the GPU) handlers chosen in one line; `BridgeSuite`, `BridgeOnMlxSuite` the law.
-  The MCP tool is not built.
+  The model as the reader: `ModelJudge` (ask, probe, both; `ModelBridgeBench`: both 100% of sentences, 10/10 whole
+  answers on Qwen3.5-4B). The MCP tool: module `mcp` (`above`, okay-mcp over stdio).
 - **Not only reliability.** okay-guard: a policy over tool calls is Datalog; the facts about a call ("destructive",
   "leaves the project", "a secret") are judgements — an Ask reader over the call's text; the exact policy on the CPU
   or in weights; a decision with the reading it rests on; the journal with proofs. And the mask regime: a forbidden

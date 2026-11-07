@@ -178,6 +178,9 @@ object Machine:
   def reference(p: Program): Runner                     // Interpret's ops, a position at a time
   def weights(p: Program, w: Weights): Runner           // Forward.row, a position at a time
   final case class Run(trace: Vector[Record], last: Record, steps: Int)
+  // on a Machine: a round of slots, until `stop` holds of all their states
+  def runWide(prefix, starts: Vector[Record], runner, maxRounds, stop: Vector[Record] => Boolean): WideRun
+  final case class WideRun(trace: Vector[Record], states: Vector[Record], rounds: Int)
 ```
 
 A machine is a causal step program run in a loop: the positions of `prefix` first (a program, a table), then one
@@ -190,9 +193,16 @@ position).
 `H` — handle, `P` — perform), `Cek.reference(term)` (the ordinary machine), `Cek.cases` (the six programs of the
 experiment). See [effects.md](effects.md).
 
+`OrParallel` — or-parallel SAT as a wide machine: `OrParallel.compile(nv, cnf)`, `OrParallel.models(nv, cnf)` (brute
+force), `OrParallel.Program(nv, npc, slots)` (`step`, `machine`, `run(prog, runner)`: solutions, turns, peak slots).
+
+A rule may not read a `Count`'s destination (or a gathered set) in the head's own layer: its MLP decodes it.
+
 ## The bridge — module `bridge` (`okay.inlay.bridge`, JVM + JS, on okay-simple)
 
 Effects `Judge` (`Read(sentence): Option[Edge]`) and `Deduce` (`Above(edges, question): Answer`); the program
 `Bridge.above(text, question): Said`; handlers `Bridge.reading(f)`, `Bridge.deducing(f)`; deducers `Bridge.search`,
-`Bridge.Block(names, len, rounds)` (`interpret`, `forward`, `answer(records)` for any runner's records). See
+`Bridge.Block(names, len, rounds)` (`interpret`, `forward`, `answer(records)` for any runner's records).
+Module `mcp`: `Tool.above` and `Main` (okay-mcp's server over stdio). Module `mlx`: `ModelJudge` (`asking`, `probing`,
+`both` — `Judge` handlers from a model). See
 [effects.md](effects.md).

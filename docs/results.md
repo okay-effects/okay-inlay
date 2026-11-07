@@ -14,6 +14,9 @@ Every number here comes from an experiment, a test or a bench; the source is nam
 | quote, tokens as bits, 300 words, k = 16 | 8 heads, 1,312 dims | equal to QuoteK | `BitsQuoteSuite` |
 | the CEK machine with effect handlers as a step program | 1 layer, 2 heads, 3,909 neurons, residual 467 | the six programs: the weights' trace == the reference's, the answers == the ordinary machine; ∃x∃y∃z 822 steps | `CekSuite` |
 | the bridge as a program of effects | — | search == the reference == the weights (CPU, browser, GPU) on 30 texts | `BridgeSuite`, `BridgeOnMlxSuite` |
+| or-parallel SAT as a wide machine (12 slots, two phases a turn) | 5 layers, 5 heads, 1,065 neurons, residual 396 | 8 formulas: the weights' trace == the reference's, solutions == brute force, 4–14 turns | `OrParallelSuite` |
+| the bridge read by Qwen3.5-4B (ModelJudge: both), deduced on the GPU | — | 100% of sentences; the whole answer equal to the gold's on 10 of 10 texts (ask alone 6, the probe 2) | `ModelBridgeBench` |
+| the bridge as an MCP tool | — | the tool's answer == the bridge's, over a scripted link and stdio | `ToolSuite` (mcp) |
 | transitive closure, 12 names, 40 positions | 12 layers, 921 dims | exact on 40 random graphs (yes, sentences used, cycles) | `ClosureSuite`, `specs/bridge.md` §8 |
 | the same, 16 names, 128 positions, 2⁵ hops | 14 layers, 2,930 dims | — | `specs/bridge.md` §8 |
 | quotes on Apple's GPU beside Qwen3-4B | 81 words, k = 16, 8 heads | 160 steps, 93 inside a quote, equal at every step; 2.8 s | `QwenQuoteSuite` |
