@@ -35,7 +35,9 @@ class ModelBridgeBench extends munit.FunSuite:
   def text(rnd: scala.util.Random, n: Int, k: Int): Vector[(String, String, String, Boolean)] =
     val order = rnd.shuffle(names)
     val chain = (0 until order.size - 1).map(i => (order(i), order(i + 1)))
-    val more = Vector.fill(n) { val i = rnd.nextInt(order.size - 1); (order(i), order(i + 1 + rnd.nextInt(order.size - 1 - i))) }
+    val more = Vector.fill(n) {
+      val i = rnd.nextInt(order.size - 1); (order(i), order(i + 1 + rnd.nextInt(order.size - 1 - i)))
+    }
     rnd.shuffle((chain ++ more).distinct.take(n)).map((b, w) => sentence(rnd, b, w, k)).toVector
 
   test("the bridge with Qwen3.5-4B reading: ask, probe, both, against the gold"):
@@ -52,7 +54,8 @@ class ModelBridgeBench extends munit.FunSuite:
     val check = Vector.fill(8)(text(rnd, 15, 1)).flatten
     val sp = ModelJudge.spread(check.map((t, x, y, _) => probe.score(judge.features(t, x, y))))
     val sa = ModelJudge.spread(check.map((t, x, y, _) => judge.ask(t, x, y)))
-    println(f"probe trained on 600 sentences, spreads probe $sp%.2f ask $sa%.2f (${(System.nanoTime() - t0) / 1e9}%.0f s)")
+    println(f"probe trained on 600 sentences, spreads probe $sp%.2f ask $sa%.2f " +
+      f"(${(System.nanoTime() - t0) / 1e9}%.0f s)")
     val block = Bridge.Block(names, 128, 5)
     val gpu = OnMlx(block.weights)
     def deduceOnGpu(edges: Vector[Edge], q: (String, String)) =

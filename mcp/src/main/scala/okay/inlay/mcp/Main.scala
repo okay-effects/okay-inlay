@@ -36,7 +36,8 @@ object Tool:
       Bridge.above[Row](lines, (a, b)))))
     def numbers(s: Iterable[Int]) = Json.Arr(s.toVector.sorted.map(i => Json.num(i + 1)))
     val ans = said.answer
-    val words = (if ans.yes then s"$a is above $b — rests on lines ${ans.restsOn.toVector.sorted.map(_ + 1).mkString(", ")}"
+    def listed(s: Iterable[Int]) = s.toVector.sorted.map(_ + 1).mkString(", ")
+    val words = (if ans.yes then s"$a is above $b — rests on lines ${listed(ans.restsOn)}"
       else s"$a is not above $b by these sentences") +
       (if ans.onCycle.nonEmpty then s"; lines ${ans.onCycle.toVector.sorted.map(_ + 1).mkString(", ")} form a cycle"
        else "") +

@@ -18,7 +18,8 @@ class BridgeOnMlxSuite extends munit.FunSuite:
       "Fay works under Eve.", "Eve leads Bob.", "The weather was fine.")
     try
       for q <- Seq(("Ann", "Fay"), ("Fay", "Ann"), ("Cid", "Bob"), ("Kim", "Lou")) do
-        val bySearch = run(Bridge.reading(Bridge.phrasings(_))(Bridge.deducing(Bridge.search)(Bridge.above[Row](text, q))))
+        val rules = Bridge.phrasings(_)
+        val bySearch = run(Bridge.reading(rules)(Bridge.deducing(Bridge.search)(Bridge.above[Row](text, q))))
         val byGpu = run(Bridge.reading(Bridge.phrasings(_))(Bridge.deducing(gpu)(Bridge.above[Row](text, q))))
         assertEquals(byGpu, bySearch, q.toString)
         println(s"$q: ${byGpu.answer}")

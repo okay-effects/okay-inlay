@@ -98,11 +98,13 @@ object OrParallel:
           (for r <- 0 until nv; v <- bools; holds <- Seq(true, false) yield
             rule(Is(phase, "B"), Is(act, "yes"), Is(fOp, "JT"), Is(fR, r.toString), Is(fPol, v),
                 if holds then Is(regs(r), v) else IsNot(regs(r), v))(
-              Seq(to(phase, "A"), to(act, "yes"), copy(pc, if holds then fK else fNx)) ++ keep(slot) ++ keep(regs*)*)) ++
+              Seq(to(phase, "A"), to(act, "yes"), copy(pc, if holds then fK else fNx)) ++ keep(slot) ++
+                keep(regs*)*)) ++
           Seq(
             rule(Is(phase, "B"), Is(act, "yes"), Is(fOp, "REJECT"))(to(phase, "A"), to(free, "yes"), copy(slot, slot)),
             rule(Is(phase, "B"), Is(act, "yes"), Is(fOp, "ACCEPT"))(to(phase, "A"), to(done, "yes"), copy(slot, slot)),
-            rule(Is(phase, "B"), Is(free, "yes"), IsNot(pHas, "yes"))(to(phase, "A"), to(free, "yes"), copy(slot, slot)),
+            rule(Is(phase, "B"), Is(free, "yes"), IsNot(pHas, "yes"))(to(phase, "A"), to(free, "yes"),
+              copy(slot, slot)),
             rule(Is(phase, "B"), Is(done, "yes"))(to(phase, "A"), to(done, "yes"), copy(slot, slot))) ++
           (0 until nv).map(r => rule(Is(phase, "B"), Is(free, "yes"), Is(pHas, "yes"), Is(pR, r.toString))(
             Seq(to(phase, "A"), to(act, "yes"), copy(pc, pNx), to(regs(r), "f"), copy(slot, slot)) ++

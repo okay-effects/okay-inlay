@@ -41,7 +41,8 @@ object Builtin:
   /** the position `d` back (none before the first) */
   def back(d: Int, bits: Int): Bits = Bits(s"back$d", bits)
   def isBuiltin(f: Field): Boolean =
-    f.isInstanceOf[Bits] && (f.name == "pos" || f.name == "prev" || f.name == "next" || f.name.matches("back[1-9][0-9]*"))
+    f.isInstanceOf[Bits] && (f.name == "pos" || f.name == "prev" || f.name == "next" ||
+      f.name.matches("back[1-9][0-9]*"))
 
 /** a field's value at a position */
 enum Val:
@@ -110,6 +111,21 @@ final case class Count(dst: Cat, query: Seq[Field], key: Seq[Field], wild: Boole
   def writes: Seq[Field] = Seq(dst)
   def cap: Int = dst.values.size - 1
 
+/**
+ * A COVERING HEAD (DPLL's conflicts and units): position i attends to the positions j whose `key` fields equal i's
+ * `query` fields, whose key sets are covered by i's query sets but for at most `slack` members in all (`covered`:
+ * pairs (i's set, j's set), the members of j's set not in i's counted), and whose `apart` sets meet none of i's (pairs
+ * (i's set, j's set)); of those, the ones with the fewest members uncovered — their `copy` sources gathered into sets
+ * (never inexact). "A clause falsified": its positive literals among the false, its negative among the true, slack 0;
+ * "a unit clause": slack 1, no literal of it true. Compiled: a score linear in the sets' dims — λ per member covered,
+ * −λ per member, λ·slack, −λ(slack + 1) per member shared that must not be, the equal pairs λ(slack + 1) each.
+ */
+final case class Cover(copy: Seq[(Many, Field)], query: Seq[Field], key: Seq[Field], covered: Seq[(Many, Many)],
+    apart: Seq[(Many, Many)] = Nil, slack: Int = 0) extends Head:
+  require(slack >= 0, "a cover's slack is not negative")
+  def wild: Boolean = false
+  def writes: Seq[Field] = copy.map(_._1)
+
 /** an attention head: what it compares, what it writes */
 sealed trait Head extends Op:
   def query: Seq[Field]
@@ -141,7 +157,8 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
       case (Flag(_), Flag(_)) => true
       case (Many(_, x), Many(_, y)) => x == y
       case _ => false
-    for b <- inputs.collect { case b: Bits if Builtin.isBuiltin(b) => b } if (1 << b.bits) < maxLen || b.name == "next" && (1 << b.bits) <= maxLen do
+    for b <- inputs.collect { case b: Bits if Builtin.isBuiltin(b) => b }
+        if (1 << b.bits) < maxLen || b.name == "next" && (1 << b.bits) <= maxLen do
       out += s"${b.name}: ${b.bits} bits do not reach maxLen $maxLen"
     if inputs.map(_.name).distinct.size != inputs.size then out += "an input given twice"
     for (l, n) <- layers.zipWithIndex do
@@ -168,6 +185,16 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
                 case _ => out += s"layer $n: gathering ${s.name} needs a Many of its values, not ${d.name}"
               else if !same(d, s) then out += s"layer $n: ${s.name} copied into ${d.name} of another kind"
             if h.all && h.latest then out += s"layer $n: a lookup gathers all or takes the latest, not both"
+          case c: Cover =>
+            for (d, s) <- c.copy do
+              read(s, "a cover")
+              (d, s) match
+                case (Many(_, dv), Cat(_, sv)) if dv == sv => ()
+                case (Many(_, dv), Many(_, sv)) if dv == sv => ()
+                case _ => out += s"layer $n: a cover gathers ${s.name} into a Many of its values, not ${d.name}"
+            for (q, k) <- c.covered ++ c.apart do
+              read(q, "a cover"); read(k, "a cover")
+              if q.values != k.values then out += s"layer $n: a cover's ${q.name} and ${k.name} have other values"
           case c: Count =>
             if c.dst.values != (0 to c.cap).map(_.toString) then
               out += s"layer $n: a count's ${c.dst.name} has the values 0 to K in order"
@@ -177,12 +204,14 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
       // what this layer's MLP decodes (a gathered set, a count: the head writes a share, the MLP the value) — not
       // yet there for the same layer's rules
       val gathered = (l.heads.collect { case h: Lookup if h.all => h.copy.map(_._1.name) }.flatten ++
-        l.heads.collect { case c: Count => c.dst.name }).toSet
+        l.heads.collect { case c: Count => c.dst.name } ++
+        l.heads.collect { case c: Cover => c.copy.map(_._1.name) }.flatten).toSet
       for r <- l.rules do
         r.guards.foreach(g => read(g.reads, "a rule"))
         for f <- r.guards.map(_.reads) ++ r.sets.collect { case Write.Union(_, ss) => ss }.flatten
             if gathered(f.name) do
-          out += s"layer $n: ${f.name} is decoded by this layer's MLP (a gathered set, a count); a rule reads it in the next layer"
+          out += s"layer $n: ${f.name} is decoded by this layer's MLP (a gathered set, a count); a rule reads it in " +
+            "the next layer"
         r.sets.foreach { case Write.Copy(d, s) =>
             read(s, "a rule")
             (d, s) match

@@ -20,8 +20,11 @@ class BridgeSuite extends munit.FunSuite:
     val all = if cyclic then edges :+ { val (x, y) = edges(rnd.nextInt(edges.size)); (y, x) } else edges
     val said = rnd.shuffle(all).map { (boss, worker) =>
       if rnd.nextBoolean() then
-        (s"$boss ${Bridge.phrasings.above(rnd.nextInt(Bridge.phrasings.above.size))} $worker.", Edge(boss, worker, true))
-      else (s"$worker ${Bridge.phrasings.below(rnd.nextInt(Bridge.phrasings.below.size))} $boss.", Edge(worker, boss, false))
+        val verb = Bridge.phrasings.above(rnd.nextInt(Bridge.phrasings.above.size))
+        (s"$boss $verb $worker.", Edge(boss, worker, true))
+      else
+        val verb = Bridge.phrasings.below(rnd.nextInt(Bridge.phrasings.below.size))
+        (s"$worker $verb $boss.", Edge(worker, boss, false))
     }
     val noise = "The weather was fine."
     val lines = said.map(_._1).patch(rnd.nextInt(said.size + 1), Seq(noise), 0)
@@ -35,9 +38,10 @@ class BridgeSuite extends munit.FunSuite:
       val (lines, gold) = text(rnd, 6 + rnd.nextInt(14), trial % 4 == 0)
       val q = (names(rnd.nextInt(names.size)), names(rnd.nextInt(names.size)))
       // the program, run in one line per choice of handlers
-      val bySearch = run(Bridge.reading(Bridge.phrasings(_))(Bridge.deducing(Bridge.search)(Bridge.above[Row](lines, q))))
-      val byReference = run(Bridge.reading(Bridge.phrasings(_))(Bridge.deducing(block.interpret)(Bridge.above[Row](lines, q))))
-      val byWeights = run(Bridge.reading(Bridge.phrasings(_))(Bridge.deducing(block.forward)(Bridge.above[Row](lines, q))))
+      val rules = Bridge.phrasings(_)
+      val bySearch = run(Bridge.reading(rules)(Bridge.deducing(Bridge.search)(Bridge.above[Row](lines, q))))
+      val byReference = run(Bridge.reading(rules)(Bridge.deducing(block.interpret)(Bridge.above[Row](lines, q))))
+      val byWeights = run(Bridge.reading(rules)(Bridge.deducing(block.forward)(Bridge.above[Row](lines, q))))
       val byGold = run(Bridge.reading(gold.get)(Bridge.deducing(block.forward)(Bridge.above[Row](lines, q))))
       assertEquals(byReference, bySearch, s"trial $trial")
       assertEquals(byWeights, bySearch, s"trial $trial")

@@ -61,6 +61,18 @@ object Interpret:
   /** position i's reading of one head (`rs` indexed from position 1) */
   def lookup(h: Head, rs: Vector[Record], i: Int, causal: Boolean = true): Seq[(String, Val)] = h match
     case c: Count => Seq(c.dst.name -> Val.C(Some(math.min(matches(c, rs, i, causal).size, c.cap).toString)))
+    case c: Cover =>
+      // the candidates: equal on the pairs, apart where they must be, at most `slack` members uncovered; the fewest
+      def set(r: Record, f: Field): Set[String] = r(f.name) match
+        case Val.M(s) => s
+        case Val.C(Some(v)) => Set(v)
+        case _ => Set.empty
+      val eq = matches(Lookup(Nil, c.query, c.key), rs, i, causal)
+      val scored = eq.filter(j => c.apart.forall((q, k) => (set(rs(i), q) & set(rs(j), k)).isEmpty))
+        .map(j => j -> c.covered.map((q, k) => (set(rs(j), k) -- set(rs(i), q)).size).sum).filter(_._2 <= c.slack)
+      val best = scored.map(_._2).minOption
+      val chosen = scored.collect { case (j, u) if best.contains(u) => j }
+      c.copy.map((d, s) => d.name -> Val.M(chosen.flatMap(j => set(rs(j), s)).toSet))
     case h: Lookup =>
       val found = matches(h, rs, i, causal)
       if h.all then

@@ -50,7 +50,8 @@ final class ModelJudge(chat: Chat, model: Qwen35, layer: Int, names: Vector[Stri
     val from = decoded.indexOf(head + text) + head.length
     def tokenAt(c: Int) = ends.indexWhere(_ > c)
     val fx = text.indexOf(x); val sy = text.indexOf(y, fx + x.length)
-    val at = Vector(tokenAt(from + fx + x.length - 1), tokenAt(from + sy + y.length - 1), tokenAt(from + text.length - 1))
+    val at = Vector(tokenAt(from + fx + x.length - 1), tokenAt(from + sy + y.length - 1),
+      tokenAt(from + text.length - 1))
     var got = Vector.empty[Array[Float]]
     model.hook = new Qwen3.Hook:
       def after(i: Int, h: _root_.mlx.Arr)(using Scope): _root_.mlx.Arr =

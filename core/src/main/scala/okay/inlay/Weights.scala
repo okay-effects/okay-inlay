@@ -19,6 +19,7 @@ object Layout:
   def of(p: Program): Layout =
     val scratch = p.layers.flatMap(_.heads.flatMap {
       case h: Lookup if h.all => h.copy.map((d, _) => raw(d))
+      case c: Cover => c.copy.map((d, _) => raw(d))
       case c: Count => Seq(share(c.dst))
       case _ => Nil
     })
@@ -62,7 +63,10 @@ object Compile:
       val latest = h match
         case l: Lookup => l.latest
         case _ => false
-      val lambda = if latest then 4 * Eps * p.maxLen else Lambda
+      // (a cover's equal pairs weigh λ(slack + 1): a mismatch below every candidate, whatever its sets)
+      val lambda = h match
+        case c: Cover => Lambda * (c.slack + 1)
+        case _ => if latest then 4 * Eps * p.maxLen else Lambda
       var top = 0f
       for (q, k) <- h.query.zip(h.key) do (q, k) match
         case (qc: Cat, kc: Cat) =>
@@ -99,6 +103,18 @@ object Compile:
           for (dst, src) <- h.copy do
             val into = if h.all then Layout.raw(dst) else dst
             for i <- 0 until dst.dims do ov(lay.at(into) + i)(lay.at(src) + i) = 1f
+        case c: Cover =>
+          // λ per member of j's set covered by i's, −λ per member of j's (so −λ per member uncovered), λ·slack;
+          // −λ(slack + 1) per member shared where the sets must be apart: a candidate scores
+          // top + λ(slack − uncovered) ≥ top, the start top − λ/2, the rest ≤ top − λ
+          for (q, k) <- c.covered; v <- 0 until k.dims do
+            qk(lay.at(q) + v)(lay.at(k) + v) += Lambda
+            qk(Layout.One)(lay.at(k) + v) -= Lambda
+          for (q, k) <- c.apart; v <- 0 until k.dims do qk(lay.at(q) + v)(lay.at(k) + v) -= Lambda * (c.slack + 1)
+          qk(Layout.One)(Layout.One) += Lambda * c.slack
+          qk(Layout.One)(Layout.Start) += top - Lambda / 2 - Lambda * c.slack
+          for (dst, src) <- c.copy do
+            for i <- 0 until dst.dims do ov(lay.at(Layout.raw(dst)) + i)(lay.at(src) + i) = 1f
         case c: Count =>
           // the start scores as a match: 1/(c+1) of the attention on it, read into the share
           qk(Layout.One)(Layout.Start) += top
@@ -161,7 +177,9 @@ object Compile:
             neurons += ((b, Seq(lay.at(dst) + i -> -1f)))
       // the ladder of a gathering head: min(1, L·x) = ReLU(L·x) − ReLU(L·x − 1), any share ≥ 1/maxLen a 1
       val steep = 2f * p.maxLen
-      for h <- l.heads.collect { case h: Lookup if h.all => h }; (dst, _) <- h.copy; i <- 0 until dst.dims do
+      val gathering = l.heads.collect { case h: Lookup if h.all => h.copy.map(_._1); case c: Cover => c.copy.map(_._1) }
+        .flatten
+      for dst <- gathering; i <- 0 until dst.dims do
         val from = lay.at(Layout.raw(dst)) + i
         val a = Array.fill(d)(0f)
         a(from) = steep
