@@ -35,6 +35,7 @@ val count  = Cat("count", (0 to 64).map(_.toString).toVector)
 val program = Program(Seq(status, ask),
   Seq(Layer(heads = Seq(Count(count, Seq(ask), Seq(status))))), maxLen = 64)
 
+val statuses = Vector("paid", "unpaid", "unpaid" /* … a status per row */)
 val weights = Compile(program)                            // the matrices
 val rows = statuses.map(s => Map("status" -> Val.C(Some(s)))) :+ Map("ask" -> Val.C(Some("unpaid")))
 
