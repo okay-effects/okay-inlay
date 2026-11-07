@@ -59,3 +59,7 @@
     prompts; the teacher's skill file UNCHANGED on 12 + 12 questions (target 12/12, 9/12). Else: relative
     representations (similarities to standard anchor texts — no training), or distillation. Hard parts: writing to the
     bus (a core must be trained to listen), cross-family depth, the prompt template inside the contract.
+15. **domains: a framework for reading meanings** (operator, 2026-11-07; SPEC specs/domains.md) — a domain declares
+    its space (schema, point, enumerate, random, exact run, phrases, slots, parts/assemble) and gets pairs, reading
+    with abstention and the measure by constructor from `Kit`; tables (okay-desk's Space) the first instance, units and
+    the calendar the second; the test: linear probes on bus v1's states for the second family (bus.md §5's kit).
