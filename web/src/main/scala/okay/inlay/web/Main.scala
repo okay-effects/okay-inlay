@@ -1,46 +1,33 @@
 package okay.inlay.web
 
-import okay.inlay.*
+import okay.effects.*
+import okay.inlay.bridge.{Bridge, Deduce, Judge}
 import scala.scalajs.js
 import scala.scalajs.js.Dynamic.global as g
 
-/** the closure in weights, in the browser: sentences in, the answer with the sentences it rests on and the cycles */
+/** THE BRIDGE IN THE BROWSER: the same program as on the JVM (`Bridge.above`), run in one line with the page's
+ * handlers — the rules over the known phrasings as the reader, the compiled closure (`Forward` on Scala.js) as the
+ * deducer. Sentences in; the answer with the sentences it rests on, the cycles, the lines not understood */
 object Main:
-  val names = Vector("Ann", "Bob", "Cid", "Dee", "Eve", "Fay", "Gus", "Hal", "Ivy", "Jon", "Kim", "Lou")
-  val above = Vector("manages", "oversees", "supervises", "is the manager of", "is above", "leads")
-  val below = Vector("reports to", "works under", "answers to", "is managed by", "is supervised by")
-  lazy val (program, _) = Closure.program(names, 40, 4)
-  lazy val weights = Compile(program)
-
-  /** a sentence by the known phrasings: (first, second, the first is the superior) */
-  def parse(line: String): Option[(String, String, Boolean)] =
-    val t = line.trim.stripSuffix(".")
-    val pattern = "^(\\w+) (.+) (\\w+)$".r
-    t match
-      case pattern(x, verb, y) if names.contains(x) && names.contains(y) =>
-        if above.contains(verb) then Some((x, y, true)) else if below.contains(verb) then Some((x, y, false)) else None
-      case _ => None
+  type Row[X] = (Judge + Deduce)[X]
+  val block: Bridge.Block = Bridge.block
 
   def run(text: String, qa: String, qb: String): String =
     val lines = text.split("\n").map(_.trim).filter(_.nonEmpty).toVector
-    val parsed = lines.map(parse)
-    val sentences = parsed.flatten
-    if sentences.isEmpty then return "no sentence understood (use: Ann manages Bob. / Bob reports to Cid.)"
     val t0 = js.Date.now()
-    val recs = Forward.run(program, weights, Closure.inputs(sentences, (qa, qb)))
+    val said = okay.effects.run(Bridge.reading(Bridge.phrasings(_))(Bridge.deducing(block.forward)(
+      Bridge.above[Row](lines, (qa, qb)))))
     val ms = js.Date.now() - t0
-    val last = recs.last
-    val yes = last("yes") == Val.F(true)
-    val on = last("on") match { case Val.M(s) => s.map(_.toInt).toVector.sorted; case _ => Vector.empty }
-    val cycles = recs.init.zipWithIndex.filter(_._1("cycle") == Val.F(true)).map(_._2 + 1)
-    val skipped = parsed.zipWithIndex.collect { case (None, i) => i + 1 }
-    val numbered = sentences.zipWithIndex.map((s, i) => s"${i + 1}. ${lines(lines.indexWhere(l => parse(l).contains(s)))}")
-    (if yes then s"$qa is above $qb — rests on sentences ${on.mkString(", ")}"
+    val read = lines.size - said.unread.size
+    if read == 0 then return "no sentence understood (use: Ann manages Bob. / Bob reports to Cid.)"
+    def numbers(s: Set[Int]) = s.toVector.sorted.map(_ + 1).mkString(", ")
+    val a = said.answer
+    (if a.yes then s"$qa is above $qb — rests on lines ${numbers(a.restsOn)}"
      else s"$qa is not above $qb by these sentences") +
-      (if cycles.nonEmpty then s"\ncontradiction: sentences ${cycles.mkString(", ")} form a cycle" else "") +
-      (if skipped.nonEmpty then s"\nnot understood (lines): ${skipped.mkString(", ")}" else "") +
-      f"\n${sentences.size} sentences, ${program.layers.size} layers, ${weights.layout.dims} dims, $ms%.0f ms" +
-      s"\n\n${numbered.mkString("\n")}"
+      (if a.onCycle.nonEmpty then s"\ncontradiction: lines ${numbers(a.onCycle)} form a cycle" else "") +
+      (if said.unread.nonEmpty then s"\nnot understood (lines): ${numbers(said.unread.toSet)}" else "") +
+      f"\n$read sentences, ${block.program.layers.size} layers, ${block.weights.layout.dims} dims, $ms%.0f ms" +
+      s"\n\n${lines.zipWithIndex.map((l, i) => s"${i + 1}. $l").mkString("\n")}"
 
   def main(args: Array[String]): Unit =
     val doc = g.document

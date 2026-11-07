@@ -203,6 +203,10 @@ or unreachable; 6 instances per n, 2 of them with a cycle:
   too — `Judge(sentence): Boolean` — with handlers Probe, Ask, Text, Gold; the LLM is one handler of it. The bridge is
   a program over Read / Deduce / Answer where only handlers change. To do: state it as `Effectful` on okay-simple, so
   the MCP tool, the block in weights and the browser are one program, run in one line.
+  BUILT 2026-11-08 (module `bridge`, docs/effects.md): `Judge` and `Deduce` as okay-simple effects, `Bridge.above` the
+  program; the readers (rules, the gold, any function) and the deducers (plain search, the DSL's reference, the
+  weights on the CPU, the browser and the GPU) handlers chosen in one line; `BridgeSuite`, `BridgeOnMlxSuite` the law.
+  The MCP tool is not built.
 - **Not only reliability.** okay-guard: a policy over tool calls is Datalog; the facts about a call ("destructive",
   "leaves the project", "a secret") are judgements — an Ask reader over the call's text; the exact policy on the CPU
   or in weights; a decision with the reading it rests on; the journal with proofs. And the mask regime: a forbidden

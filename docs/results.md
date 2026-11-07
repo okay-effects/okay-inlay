@@ -12,6 +12,8 @@ Every number here comes from an experiment, a test or a bench; the source is nam
 | quote window, k = 6 | 4 layers, 13 heads, 140 dims, 22 neurons | equal to QuoteK | `QuoteSuite`, `specs/dsl.md` |
 | quote, cheap form, k = 8 / 16 / 32 | 6 / 7 / 8 layers; 7 / 8 / 9 heads; 152 / 246 / 428 dims | equal to QuoteK | `QuoteSuite` |
 | quote, tokens as bits, 300 words, k = 16 | 8 heads, 1,312 dims | equal to QuoteK | `BitsQuoteSuite` |
+| the CEK machine with effect handlers as a step program | 1 layer, 2 heads, 3,909 neurons, residual 467 | the six programs: the weights' trace == the reference's, the answers == the ordinary machine; ∃x∃y∃z 822 steps | `CekSuite` |
+| the bridge as a program of effects | — | search == the reference == the weights (CPU, browser, GPU) on 30 texts | `BridgeSuite`, `BridgeOnMlxSuite` |
 | transitive closure, 12 names, 40 positions | 12 layers, 921 dims | exact on 40 random graphs (yes, sentences used, cycles) | `ClosureSuite`, `specs/bridge.md` §8 |
 | the same, 16 names, 128 positions, 2⁵ hops | 14 layers, 2,930 dims | — | `specs/bridge.md` §8 |
 | quotes on Apple's GPU beside Qwen3-4B | 81 words, k = 16, 8 heads | 160 steps, 93 inside a quote, equal at every step; 2.8 s | `QwenQuoteSuite` |

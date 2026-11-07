@@ -151,3 +151,18 @@ inside a dense model's own layers needs (1) residual dims the model does not use
 identity at the block's input (the model's residual at depth carries predictions, not the token), (3) float32 scores.
 None holds in a standard model; so the block is a SIDE model with its own residual, combined with the model's logits
 by the engine — stage (b), `WeightsPort` — and (c) is closed: an engine hook is the honest requirement.
+
+## Machines (2026-11-08)
+
+The machine experiments' style in the library. `Machine(step, carry, halted)`: a causal step program run in a loop —
+the prefix's positions (a program, a table), then a position a step, its inputs the previous step's outputs named by
+`carry` — until `halted`. The step's handlers (`Machine.Runner`): `Machine.reference` (`Interpret`'s ops at the new
+position) and `Machine.weights` (`Forward.row`, one position through one layer — `Forward.layers` is it at every
+position), each keeping what it computed for the earlier positions. Two additions to the DSL: `Builtin.next` (the
+position + 1: the address of the cell a step writes) and the guards `Has` / `Lacks` on `Bits` (NIL is none).
+
+`Cek` writes experiments/Handlers.sc's machine in it — call-by-value λ, deep handlers, multi-shot continuations — as
+one layer: two heads (the term node at C, the cell at ADDR) and 22 rules; 3,909 neurons, residual 467, pointers of 11
+bits for 1,024 positions. `CekSuite`: the six programs, the weights' trace equal to the reference's step by step, the
+answers equal to the ordinary machine's; ∃x∃y∃z in 822 steps, as the experiment. The search machines (or-parallel,
+DPLL: many slots a turn) are not yet in the library.

@@ -60,6 +60,28 @@ machine with deep multi-shot handlers written the ordinary way.
 increment circuit for "the next position", a NIL test as one neuron): the six programs equal again with 1,931–2,112
 neurons instead of 168,458–176,975, and a residual of 145–157 dimensions instead of 8,087.
 
+### In the library: `Machine` and `Cek`
+
+The machine is also a program of the DSL (`core/.../Cek.scala`), compiled by `Compile` like any other: a **step
+program** of one layer — two heads (the term node at C, the heap cell at ADDR, each a `Lookup` by position) and 22
+rules (the transition, with the handlers' four) — run by `Machine`, which appends one position a step and carries the
+next state into it. A pointer is `Bits` (NIL is none, tested by the guards `Has` / `Lacks`); the address of the cell a
+step writes is `Builtin.next`, the position its record lands at.
+
+```scala
+val cek = Cek.Program(maxLen = 1024)                       // pointers of 11 bits
+val w = Compile(cek.step)                                  // 1 layer, 2 heads, 3,909 neurons, residual 467
+val t = Cek.cases.last._2                                  // ∃x. ∃y. ∃z. x ∧ y ∧ ¬z
+cek.run(t, Machine.reference(cek.step))                    // the DSL's reference, a position at a time
+cek.run(t, Machine.weights(cek.step, w))                   // the weights, a position at a time: the same trace
+Cek.reference(t)                                           // the machine written the ordinary way: the same answer
+```
+
+`Machine.Runner` is the handler of a step: `Machine.reference` runs `Interpret`'s ops at the new position,
+`Machine.weights` runs `Forward.row` at the new position — each keeping what it computed for the earlier positions,
+which a causal program never changes. `CekSuite`: on the six programs the weights' trace equals the reference's step
+by step, and the answers equal the ordinary machine's — ∃x∃y∃z in 822 steps, as in the experiment.
+
 ### From a choice effect to parallel search
 
 Resuming `exists` twice explores both branches one after the other. A transformer has many positions, so the next
@@ -119,10 +141,33 @@ okay-desk carries this through: the readers never call a model, they perform `Re
 browser, on WebGPU or WebGL2). The same skill file and the same program run on all of them; the bus
 ([bridge-and-bus.md](bridge-and-bus.md)) is the contract of what `States` returns.
 
+### The bridge, a program of effects (module `bridge`)
+
+`okay.inlay.bridge` states it on okay-simple: two effects — `Judge` (`Read(sentence): Option[Edge]`, who is above
+whom) and `Deduce` (`Above(edges, question): Answer`) — and one program over them, `Bridge.above(text, question)`:
+every line read, the edges deduced over, the answer (yes, the lines it rests on, the lines on a cycle) mapped back to
+the text. The handlers, chosen in one line:
+
+```scala
+type Row[X] = (Judge + Deduce)[X]
+import Bridge.*
+run(reading(phrasings(_))(deducing(search)(above[Row](lines, q))))           // plain search
+run(reading(phrasings(_))(deducing(block.interpret)(above[Row](lines, q))))  // the DSL's reference
+run(reading(phrasings(_))(deducing(block.forward)(above[Row](lines, q))))    // the compiled weights, on the CPU
+run(reading(gold.get)(deducing(gpu)(above[Row](lines, q))))                  // the gold reads, the GPU deduces
+```
+
+The readers: `Bridge.reading(f)` for any `String => Option[Edge]` — rules over the known phrasings, the gold, or a
+model's reading (a probe, the model asked: `ClosureBench`'s readers are such functions). The deducers: plain search,
+the DSL's reference, the compiled weights on the CPU (JVM or the browser), the same weights on Apple's GPU
+(`OnMlx`). `BridgeSuite`: on 30 random texts every deducer gives the same answer and the rules read what the gold
+says; `BridgeOnMlxSuite`: the GPU the same. The browser page (`web/`) is the same program, run with the rules and the
+weights.
+
 ## What is not done
 
-- The machine experiments (CEK, handlers, or-parallel, DPLL) are hand-built scripts; the library's DSL does not yet
-  express them — the next step is a DSL of step rules that compiles them (BACKLOG 2, 4).
-- The bridge as a program on okay-simple's `Effectful` — so that an MCP tool, the block in weights and the browser
-  are one program run in one line — is stated, not built.
+- The CEK machine with handlers is in the DSL (`Cek`); the search machines (or-parallel, DPLL) are still
+  hand-built scripts — they need a step program over many positions at once (slots), not one appended position.
+- The bridge's readers from a model (a probe, the model asked) are functions in `ClosureBench`, not yet handlers in
+  `bridge`; an MCP tool as one more front of the same program is not built.
 - A UPLC-shaped CEK (delay/force, builtins as host effects) is planned (BACKLOG 4).

@@ -7,9 +7,10 @@ The sbt build (`build.sbt`, Scala 3.3.8, `-Werror -Wunused:all`):
 | `core` (JVM + JS) | `okay-inlay` | — | the DSL, the reference, the compiler, the forward pass, `Closure`, `Quotes`, `domain/` ([api.md](api.md)) |
 | `mlx` | `okay-inlay-mlx` | `core`, mlx-scala 0.1.0, mlx-scala-llm 0.1.0 | the weights on Apple's GPU; the quote block beside Qwen; the benches against real models |
 | `forge` | `okay-forge` | `mlx` | training a small model for a project: tasks from symdex, verification, LoRA in Scala |
-| `web` | `okay-inlay-web` (not published) | `core` (JS) | the browser smoke: the closure exact in a page |
+| `bridge` (JVM + JS) | `okay-inlay-bridge` | `core`, okay-simple's `okay-effects-machine` 0.1.1 | the bridge as a program of effects: reading and deducing as effects, the deducers (search, the reference, the weights) as handlers ([effects.md](effects.md)) |
+| `web` | `okay-inlay-web` (not published) | `bridge` (JS) | the browser smoke: the bridge program in a page |
 
-`root` aggregates `core`, `mlx` and `forge` (not `web`).
+`root` aggregates `core`, `bridge`, `mlx` and `forge` (not `web`).
 
 **mlx-scala's native library.** `mlx` and `forge` fork their JVMs with `-Dokm.lib=<dir>/libokm.dylib`, the
 directory being `$MLX_SCALA_LIB` or `../mlx-scala/native-lib/out/lib` (built by mlx-scala's `native-lib/build.sh`).
@@ -85,9 +86,10 @@ from 47 to 55 behaving; on 40 meaning tasks 19 → 27 behaving. Steering gave no
 
 ## web — the browser smoke
 
-`web/src/main/scala/okay/inlay/web/Main.scala`: the `Closure` program compiled in the page and run by `Forward` on
-Scala.js. Sentences like "Ann manages Bob" (12 names, known phrasings parsed by a regex — no model), a question "is
-Ann above Lou", an answer with the sentences it rests on and any contradiction cycle; 0.5–2 s on plain JS.
+`web/src/main/scala/okay/inlay/web/Main.scala`: the bridge's program (`Bridge.above`) in the page, run with the rules
+as the reader and the compiled `Closure` (`Forward` on Scala.js) as the deducer. Sentences like "Ann manages Bob"
+(12 names, known phrasings parsed by a regex — no model), a question "is Ann above Lou", an answer with the lines it
+rests on, any contradiction cycle and the lines not understood; about 0.3 s on plain JS.
 
 ```sh
 sbt web/fullLinkJS && cp web/target/scala-3.3.8/okay-inlay-web-opt/main.js web/page/ && open web/page/index.html

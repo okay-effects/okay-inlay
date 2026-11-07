@@ -18,12 +18,14 @@ Package `okay.inlay`, module `core` (JVM and Scala.js, no dependencies). Line nu
 `Bits.present` is the offset of its presence dim.
 
 **`object Builtin`** — inputs the embedding fills: `pos(bits)` (named `"pos"`: the position, 1-based, the start 0),
-`prev(bits)` (`"prev"`: `pos − 1`), `back(d, bits)` (`"back$d"`: `pos − d`, none before position 1).
+`prev(bits)` (`"prev"`: `pos − 1`), `back(d, bits)` (`"back$d"`: `pos − d`, none before position 1),
+`next(bits)` (`"next"`: `pos + 1`, the address a machine's step writes — needs `2^bits > maxLen`).
 
 **`enum Val`** — a field's value at a position: `C(Option[String])`, `B(Option[Int])`, `F(Boolean)`,
 `M(Set[String])`.
 
-**`enum Guard`** — `Is(Cat, v)`, `IsNot(Cat, v)`, `On(Flag)`, `Off(Flag)`, `In(Many, v)`, `NotIn(Many, v)`.
+**`enum Guard`** — `Is(Cat, v)`, `IsNot(Cat, v)`, `On(Flag)`, `Off(Flag)`, `In(Many, v)`, `NotIn(Many, v)`,
+`Has(Bits)`, `Lacks(Bits)` (a pointer present or none — a machine's NIL; compiled on the presence dim).
 
 **`enum Write`** — `To(Cat, v)`, `Raise(Flag)`, `Copy(dst, src)` (Cat→Cat with the same values, or Bits→Bits of the
 same width), `Union(dst: Many, srcs: Seq[Field])` (a union of `Many`s and `Cat`s with the same values; no guards).
@@ -165,3 +167,32 @@ abstains), `measure(d)(...)`: `Measure(n, bySlot, whole, abstained, unread, wron
 `object Units extends Domain` — unit conversion and calendar arithmetic (`Convert`, `Shift`, `Between`), 16 units
 in 4 dimensions with Russian forms, an exact proleptic Gregorian calendar; 886 points in its space. okay-desk's
 `TablesDomain` is the second domain.
+
+## Machines — `Machine.scala`, `Cek.scala`
+
+```scala
+final case class Machine(step: Program, carry: Seq[(Field, Field)], halted: Interpret.Record => Boolean):
+  def run(prefix: Vector[Record], start: Record, runner: Machine.Runner, maxSteps: Int): Machine.Run
+object Machine:
+  trait Runner { def next(inputs: Record): Record }     // a step at the newest position, the earlier kept
+  def reference(p: Program): Runner                     // Interpret's ops, a position at a time
+  def weights(p: Program, w: Weights): Runner           // Forward.row, a position at a time
+  final case class Run(trace: Vector[Record], last: Record, steps: Int)
+```
+
+A machine is a causal step program run in a loop: the positions of `prefix` first (a program, a table), then one
+position a step — its inputs the previous step's outputs named by `carry` — until `halted` holds of the appended
+state. `Forward.row(w, layer, xs, nz, i)` is one position through one layer (`Forward.layers` is it at every
+position).
+
+`Cek` — the CEK machine with deep effect handlers and multi-shot continuations as a step program:
+`Cek.Program(maxLen)` (`step`, `machine`, `prefix(term)`, `start`, `run(term, runner)`), `Cek.Term` (`V`, `L`, `A`,
+`H` — handle, `P` — perform), `Cek.reference(term)` (the ordinary machine), `Cek.cases` (the six programs of the
+experiment). See [effects.md](effects.md).
+
+## The bridge — module `bridge` (`okay.inlay.bridge`, JVM + JS, on okay-simple)
+
+Effects `Judge` (`Read(sentence): Option[Edge]`) and `Deduce` (`Above(edges, question): Answer`); the program
+`Bridge.above(text, question): Said`; handlers `Bridge.reading(f)`, `Bridge.deducing(f)`; deducers `Bridge.search`,
+`Bridge.Block(names, len, rounds)` (`interpret`, `forward`, `answer(records)` for any runner's records). See
+[effects.md](effects.md).

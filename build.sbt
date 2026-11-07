@@ -12,13 +12,23 @@ import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 lazy val core = crossProject(JVMPlatform, JSPlatform).crossType(CrossType.Pure).in(file("core"))
   .settings(name := "okay-inlay", libraryDependencies += "org.scalameta" %%% "munit" % "1.2.3" % Test)
 
-lazy val root = (project in file(".")).aggregate(core.jvm, core.js, mlx, forge).settings(publish / skip := true)
+lazy val root = (project in file(".")).aggregate(core.jvm, core.js, bridge.jvm, bridge.js, mlx, forge).settings(publish / skip := true)
+
+
+/** THE BRIDGE AS A PROGRAM OF EFFECTS (specs/bridge.md §9, docs/effects.md): reading and deducing as okay-simple
+ * effects, the bridge one program over them, the readers and the deducers (plain search, the DSL's reference, the
+ * weights) its handlers */
+lazy val bridge = crossProject(JVMPlatform, JSPlatform).crossType(CrossType.Pure).in(file("bridge")).dependsOn(core)
+  .settings(name := "okay-inlay-bridge",
+    resolvers += "okay-effects" at "https://okay-effects.github.io/okay-simple/maven",
+    libraryDependencies ++= Seq("io.github.okay-effects" %%% "okay-effects-machine" % "0.1.1",
+      "org.scalameta" %%% "munit" % "1.2.3" % Test))
 
 /** mlx-scala's native libraries (its native-lib/build.sh): MLX_SCALA_LIB, else ../mlx-scala/native-lib/out/lib */
 val nativeLib = sys.env.get("MLX_SCALA_LIB").map(file).getOrElse(file("../mlx-scala/native-lib/out/lib")).getCanonicalFile
 
 /** the compiled weights on MLX (Apple's GPU), through mlx-scala */
-lazy val mlx = (project in file("mlx")).dependsOn(core.jvm % "compile->compile;test->test")
+lazy val mlx = (project in file("mlx")).dependsOn(core.jvm % "compile->compile;test->test", bridge.jvm)
   .settings(name := "okay-inlay-mlx",
     resolvers += "okay-simple" at "https://okay-effects.github.io/okay-simple/maven",
     libraryDependencies ++= Seq("io.github.sergey-scherbina" %% "mlx-scala" % "0.1.0",
@@ -36,6 +46,6 @@ lazy val forge = (project in file("forge")).dependsOn(mlx)
 
 /** the browser smoke (specs/bridge.md §11): `Closure` compiled and run by `Forward` in a page — exact inference over
  * sentences, offline, no model: the sentences parsed by the known phrasings (a reader is the next step) */
-lazy val web = (project in file("web")).enablePlugins(ScalaJSPlugin).dependsOn(core.js)
+lazy val web = (project in file("web")).enablePlugins(ScalaJSPlugin).dependsOn(bridge.js)
   .settings(name := "okay-inlay-web", publish / skip := true, scalaJSUseMainModuleInitializer := true,
     scalaJSLinkerConfig ~= (_.withModuleKind(org.scalajs.linker.interface.ModuleKind.NoModule)))
