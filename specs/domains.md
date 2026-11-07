@@ -46,3 +46,26 @@ to-unit, shift-unit, direction (choices); quantity, dates (copied).
 The reference model of bus v1 (Qwen3-0.6B-4bit, the state after layer 19 at the prompt's last token); linear
 probes per slot trained on the domain's pairs, measured on held-out pairs by constructor. The question it answers:
 does the bus, defined on tables, carry a second family's meanings with the same recipe — the kit's second family.
+
+## 5. Measured (2026-11-07)
+
+`UnitsSuite` (core, JVM and Scala.js): the engine against hand answers, the calendar both ways over 1999–2031, parts
+and assemble inverse on 500 drawn and all 886 enumerated points, every phrase carrying its copied parts. The kit end
+to end with a reader of keywords (300 pairs, en + ru): whole 88%, 0 wrong when answered — a misread unit makes a
+point the engine refuses (two dimensions), so it is unread, not wrong.
+
+`DomainBench` (mlx; DOMAINS=1): bus v1's states (cut19, layer 19, the prompt's last token; 900 prompts in 5 s),
+probes per slot and choice trained on 600 pairs, measured on 300 held-out:
+
+| reader | whole | wrong when answered | from | to | kind, direction, shift and between units |
+|---|---|---|---|---|---|
+| keywords | 94% | 0 | 97% | 92% | 100% |
+| probes on the bus | 91% | 22 (7.3%) | 91% | 91% | 100% |
+| the bus, margin 0.5 | 52% | 9 (3.0%), 136 abstained | | | |
+| hybrid: units named in the text are exact facts, the bus reads their role | 90% | 5 (1.7%), 26 unread | | | |
+
+What it says. The bus, defined on tables, carries the second family's coarse meanings with the same recipe (the
+kind, the direction, the calendar's units: 100%); a unit's identity among sixteen is finer and reads at 91% — as
+specs/bus.md §1 expected. The lesson okay-desk learned on tables holds here: what the text names exactly is a fact,
+not a reading; the bus decides the role. With that, 1.7% wrong when answered; the unread 26 are the keyword words'
+misses (a unit not found), which fail safe.
