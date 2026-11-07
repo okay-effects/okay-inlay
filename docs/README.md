@@ -37,7 +37,7 @@ val program = Program(Seq(status, ask), Seq(Layer(heads = Seq(Count(count, Seq(a
 
 val weights = Compile(program)                                   // matrices: one attention head and one MLP
 val rows = statuses.map(s => Map("status" -> Val.C(Some(s)))) :+ Map("ask" -> Val.C(Some("unpaid")))
-Interpret.run(program, rows).last("count")                       // the reference: C(Some("14"))
+Interpret.run(program, rows).last("count")                       // the reference (on the 40 rows of OrdersCountSuite: "14")
 Forward.run(program, weights, rows).last("count")                // the weights, float32: the same, exactly
 ```
 
