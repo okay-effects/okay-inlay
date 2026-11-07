@@ -69,3 +69,11 @@ kind, the direction, the calendar's units: 100%); a unit's identity among sixtee
 specs/bus.md §1 expected. The lesson okay-desk learned on tables holds here: what the text names exactly is a fact,
 not a reading; the bus decides the role. With that, 1.7% wrong when answered; the unread 26 are the keyword words'
 misses (a unit not found), which fail safe.
+
+## 6. Tables, the first instance (2026-11-07)
+
+okay-desk's space declared as a `Domain` (`okay.desk.TablesDomain`, okay-desk branch `teacher`): the points, the
+engines (`Exact`, `Logic`) and the phrases unchanged; the slots are the space's constructors over a schema (kind,
+table, link, two conditions with copied values, group, aggregate and its column, order and direction, limit, a copied
+node and the closure's direction). `TablesDomainSuite`: parts and assemble inverse on 1,000 drawn points over 40
+schemas; the kit's pairs answered by the engines with rows. okay-inlay 0.1.0 republished locally with the package.
