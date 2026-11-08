@@ -101,6 +101,17 @@ value is decoded by its layer's MLP, so a rule of the same layer cannot read it 
 
 - `Dpll.sc` — the same handler for DPLL: conflict detection and unit propagation are heads over all clauses and all
   branches at once; a 20-variable UNSAT formula refuted in 15 branch nodes against 1,048,576 leaves.
+DPLL is in the library too (`core/.../Dpll.scala`), on a head added for it: **`Cover`** — position i attends to the
+positions whose key sets its query sets cover but for at most `slack` members, with some sets required apart; of
+those, the ones with the fewest uncovered, their sets gathered. "A clause falsified" is a cover with slack 0 (positive
+literals among the false, negative among the true); "a unit clause" slack 1 with no literal true — its unassigned
+literal is implied. The score is linear in the sets' dimensions, so it compiles like any head (`CoverSuite`: the law
+and the meaning on 300 random cases). `Dpll`: two `Cover` heads over every clause and every branch at once, rules for
+reject / propagate / accept / decide, children allocated by prefix counts as in `OrParallel` — 8 layers. `DpllSuite`:
+on seven formulas the weights' trace equals the reference's and #SAT equals brute force; on 20 variables and 85
+clauses (`DpllBigSuite`) the formula is refuted in 15 branch nodes, 11 turns, 14 branches at once against 1,048,576
+leaves — the experiment's numbers, now from a program of the DSL.
+
 - `Branching.sc`, `Gated.sc` — the handler takes advice: a model's guess of which variable and which value first,
   and its confidence (dive where sure, fork where unsure). The search stays exact — a bad guess costs time, never
   correctness — and with good guesses it does 2–4× less work.
@@ -184,6 +195,7 @@ the tests, the GPU and the browser are.
 
 ## What is not done
 
-- DPLL is still a hand-built script: its heads score a weighted count (false literals against a clause's length), not
-  equality — the DSL needs a head of threshold scores for it (BACKLOG 16).
+- The guided search of `Branching.sc` and `Gated.sc` (a model's guesses and confidences steering DPLL's decisions) is
+  still hand-built: in the library it is a `Judge`-like effect for the decision, its handlers the first unassigned
+  variable (now) or a model's score.
 - A UPLC-shaped CEK (delay/force, builtins as host effects) is planned (BACKLOG 4).

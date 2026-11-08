@@ -15,6 +15,8 @@ Every number here comes from an experiment, a test or a bench; the source is nam
 | the CEK machine with effect handlers as a step program | 1 layer, 2 heads, 3,909 neurons, residual 467 | the six programs: the weights' trace == the reference's, the answers == the ordinary machine; ∃x∃y∃z 822 steps | `CekSuite` |
 | the bridge as a program of effects | — | search == the reference == the weights (CPU, browser, GPU) on 30 texts | `BridgeSuite`, `BridgeOnMlxSuite` |
 | or-parallel SAT as a wide machine (12 slots, two phases a turn) | 5 layers, 5 heads, 1,065 neurons, residual 396 | 8 formulas: the weights' trace == the reference's, solutions == brute force, 4–14 turns | `OrParallelSuite` |
+| the covering head (DPLL's conflicts and units) | — | the law and the meaning on 300 random clause sets and assignments | `CoverSuite` |
+| DPLL as a wide machine | 8 layers; n = 20: residual 2,972, 2,144 neurons | 7 formulas: the weights' trace == the reference's, #SAT == brute force; n = 20, m = 85 UNSAT: 15 branch nodes, 11 turns, 14 branches against 1,048,576 leaves | `DpllSuite`, `DpllBigSuite` |
 | the bridge read by Qwen3.5-4B (ModelJudge: both), deduced on the GPU | — | 100% of sentences; the whole answer equal to the gold's on 10 of 10 texts (ask alone 6, the probe 2) | `ModelBridgeBench` |
 | the bridge as an MCP tool | — | the tool's answer == the bridge's, over a scripted link and stdio | `ToolSuite` (mcp) |
 | transitive closure, 12 names, 40 positions | 12 layers, 921 dims | exact on 40 random graphs (yes, sentences used, cycles) | `ClosureSuite`, `specs/bridge.md` §8 |

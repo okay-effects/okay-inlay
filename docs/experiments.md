@@ -57,5 +57,6 @@ guesses your word).
 - Binary pointers make neuron counts grow with log N.
 - Parallel positions turn search into BSP rounds: or-parallel SAT, DPLL with all branches propagated at once, and
   intuition (an order, a guess, a confidence) that can only cost time, never correctness.
-- The library (`core`) now covers lookups, counts, rules, sets, the closure and quotes; the machine experiments
-  (CEK, handlers, DPLL) are still hand-built scripts.
+- The library (`core`) now covers lookups, counts, rules, sets, the closure and quotes, and the machines: the CEK
+  machine with effect handlers (`Cek`), or-parallel search (`OrParallel`) and DPLL (`Dpll`, on the covering head) are
+  programs of the DSL with the law ([effects.md](effects.md)); the scripts stay as the first record.

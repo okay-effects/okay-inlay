@@ -55,6 +55,19 @@ Count(dst: Cat, query: Seq[Field], key: Seq[Field], wild: Boolean = false)
 The number of matching positions, written into `dst`, whose values must be exactly `"0" … "K"`; `cap = K`, counts
 ≥ K written as K.
 
+### Cover
+
+```scala
+Cover(copy: Seq[(Many, Field)], query: Seq[Field], key: Seq[Field], covered: Seq[(Many, Many)],
+      apart: Seq[(Many, Many)] = Nil, slack: Int = 0)
+```
+
+Position i attends to the positions whose `key` fields equal i's `query` fields, whose key sets are covered by i's
+sets but for at most `slack` members in all (`covered`: pairs (i's set, j's set)), and whose `apart` sets meet none of
+i's; of those, the ones with the fewest uncovered — their `copy` sources gathered into sets. Compiled with the equal
+pairs weighing λ(slack + 1), λ per member covered, −λ per member, λ·slack, −λ(slack + 1) per member shared that must
+not be. DPLL's conflict (slack 0) and unit clauses (slack 1, apart: no literal true).
+
 ### Rule, Layer, Program
 
 ```scala
@@ -197,6 +210,9 @@ experiment). See [effects.md](effects.md).
 force), `OrParallel.Program(nv, npc, slots)` (`step`, `machine`, `run(prog, runner)`: solutions, turns, peak slots).
 
 A rule may not read a `Count`'s destination (or a gathered set) in the head's own layer: its MLP decodes it.
+
+`Dpll` — DPLL as a wide machine: `Dpll.models(n, cnf)` (brute force), `Dpll.random3(n, m, rnd)`, `Dpll.Program(n,
+slots)` (`step`, `machine`, `run(cnf, runner)`: models, turns, peak branches, branch nodes).
 
 ## The bridge — module `bridge` (`okay.inlay.bridge`, JVM + JS, on okay-simple)
 

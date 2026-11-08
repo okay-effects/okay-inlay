@@ -174,3 +174,9 @@ free slot reads the requester of its rank from phase A, every slot's transition)
 `Count`'s value is decoded by its layer's MLP, so a rule of the same layer read zeros on the weights while the
 reference read the count — `Program.problems` now refuses it, as it refused a gathered set. DPLL waits for a head of
 threshold scores (BACKLOG 16).
+
+**DPLL, on a covering head (2026-11-08).** `Cover`: the key sets covered by the query's but for `slack` members,
+some sets apart, the fewest uncovered gathered — linear in the sets, so compiled like any head; its reference states the
+meaning, `CoverSuite` checks both. `Dpll` writes experiments/Dpll.sc with it (conflict: slack 0; units: slack 1, no
+literal true), 8 layers; `DpllSuite` and `DpllBigSuite` (n = 20, m = 85: 15 branch nodes, as the experiment). With
+the CEK machine and or-parallel search, the machine experiments are now programs of the library; BACKLOG 16 done.

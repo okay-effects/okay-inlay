@@ -91,8 +91,8 @@ The `mlx` and `forge` modules run on Apple silicon and need mlx-scala's native l
 
 ## Status
 
-Research, moving fast. The library covers lookups, counts, rules, sets, the closure and quotes; the machine
-experiments (CEK, handlers, DPLL) are still hand-built scripts. Every number in the docs and specs comes from a test,
+Research, moving fast. The library covers lookups, counts, rules, sets, the closure and quotes, and the machines —
+the CEK machine with effect handlers, or-parallel search and DPLL — as programs of the DSL, each with its law. Every number in the docs and specs comes from a test,
 an experiment or a bench, and says which. The design records: [`specs/`](specs/) (start with
 [`specs/inlay.md`](specs/inlay.md)); the plan: [`BACKLOG.md`](BACKLOG.md), [`SPRINT.md`](SPRINT.md).
 
