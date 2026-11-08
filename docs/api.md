@@ -211,6 +211,10 @@ force), `OrParallel.Program(nv, npc, slots)` (`step`, `machine`, `run(prog, runn
 
 A rule may not read a `Count`'s destination (or a gathered set) in the head's own layer: its MLP decodes it.
 
+`Registers` — the register machine of Looped.sc: `Registers.Program(npc, top)` (`run(prog, a, b, runner)`), `Registers.add`,
+`Registers.add2`, `Registers.interpret`. `Dpll.Program.guided(cnf, runner, advice, firstOnly)`: the decision's handler
+is advice (value, sure) per variable.
+
 `Dpll` — DPLL as a wide machine: `Dpll.models(n, cnf)` (brute force), `Dpll.random3(n, m, rnd)`, `Dpll.Program(n,
 slots)` (`step`, `machine`, `run(cnf, runner)`: models, turns, peak branches, branch nodes).
 

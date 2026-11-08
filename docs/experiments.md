@@ -23,7 +23,7 @@ The numbers below are the experiments' own output, recorded in `specs/inlay.md` 
 
 | Script | Shows | Result |
 |---|---|---|
-| `Looped.sc` | a register machine as one looped block, the program in the context | d_model 62, 177 neurons, 1 head; A+B on 136 inputs and A+2B on 72 with the same weights, equal to the interpreter; only 0/1 after 80 steps; HALT a fixed point |
+| `Looped.sc` | a register machine as one looped block, the program in the context | d_model 62, 177 neurons, 1 head; A+B on 136 inputs and A+2B on 72 with the same weights, equal to the interpreter; only 0/1 after 80 steps; HALT a fixed point  In the library: `Registers`, `RegistersSuite`. |
 | `Cek.sc` | the CEK machine for call-by-value λ-calculus (de Bruijn) | 6 programs (Church booleans) equal to a CEK interpreter in the answer **and in the step count**; ~40k neurons from ~10 rules |
 | `Handlers.sc` | deep effect handlers with **multi-shot** continuations inside the CEK transformer | capture = two pointers; `exists`/`forall` resume twice; 6 programs up to ∃x∃y∃z (822 steps) equal to a reference machine |
 | `HandlersBinary.sc` | the same with binary pointers (log₂ N bits, ±1 heads) | equal again with **1,931–2,112 neurons instead of 168,458–176,975** (~85×) and a residual of 145–157 instead of 8,087 (~55×) |
@@ -57,6 +57,7 @@ guesses your word).
 - Binary pointers make neuron counts grow with log N.
 - Parallel positions turn search into BSP rounds: or-parallel SAT, DPLL with all branches propagated at once, and
   intuition (an order, a guess, a confidence) that can only cost time, never correctness.
-- The library (`core`) now covers lookups, counts, rules, sets, the closure and quotes, and the machines: the CEK
-  machine with effect handlers (`Cek`), or-parallel search (`OrParallel`) and DPLL (`Dpll`, on the covering head) are
+- The library (`core`) now covers lookups, counts, rules, sets, the closure and quotes, and the machines: the register
+  machine (`Registers`), the CEK machine with effect handlers (`Cek`), or-parallel search (`OrParallel`) and DPLL
+  (`Dpll`, on the covering head, with advice as the decision's handler) are
   programs of the DSL with the law ([effects.md](effects.md)); the scripts stay as the first record.

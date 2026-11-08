@@ -12,6 +12,7 @@ Every number here comes from an experiment, a test or a bench; the source is nam
 | quote window, k = 6 | 4 layers, 13 heads, 140 dims, 22 neurons | equal to QuoteK | `QuoteSuite`, `specs/dsl.md` |
 | quote, cheap form, k = 8 / 16 / 32 | 6 / 7 / 8 layers; 7 / 8 / 9 heads; 152 / 246 / 428 dims | equal to QuoteK | `QuoteSuite` |
 | quote, tokens as bits, 300 words, k = 16 | 8 heads, 1,312 dims | equal to QuoteK | `BitsQuoteSuite` |
+| the register machine of Looped.sc as a step program | 2 layers, 1 head, 987 neurons, residual 142 | A+B on 136 inputs, A+2B on 72, one compiled program: the registers and steps of the interpreter | `RegistersSuite` |
 | the CEK machine with effect handlers as a step program | 1 layer, 2 heads, 3,909 neurons, residual 467 | the six programs: the weights' trace == the reference's, the answers == the ordinary machine; ∃x∃y∃z 822 steps | `CekSuite` |
 | the bridge as a program of effects | — | search == the reference == the weights (CPU, browser, GPU) on 30 texts | `BridgeSuite`, `BridgeOnMlxSuite` |
 | or-parallel SAT as a wide machine (12 slots, two phases a turn) | 5 layers, 5 heads, 1,065 neurons, residual 396 | 8 formulas: the weights' trace == the reference's, solutions == brute force, 4–14 turns | `OrParallelSuite` |
