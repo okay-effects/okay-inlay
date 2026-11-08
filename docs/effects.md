@@ -112,6 +112,15 @@ on seven formulas the weights' trace equals the reference's and #SAT equals brut
 clauses (`DpllBigSuite`) the formula is refuted in 15 branch nodes, 11 turns, 14 branches at once against 1,048,576
 leaves — the experiment's numbers, now from a program of the DSL.
 
+**Guided search, the decision as an effect.** In `Dpll` the decision reads ADVICE — positions after the clauses, per
+variable a value to try first and whether the adviser is sure — by a head; no advice is plain DPLL (true first, a fork
+always), so the advice is the decision's handler, the step program the same. Sure: the branch dives with the guess, no
+fork; unsure: it forks, the guess first. `GuidedSuite`, to the first model on four planted 3-SAT formulas (n = 12,
+m = 51): plain DPLL 69 branch nodes; exact advice 4 (one each, no fork); noisy advice (sure on half the variables,
+right 95% there, 55% elsewhere) 24 — the weights equal to the reference, every model found checked against the
+formula; a wrong sure guess can only cost the dive, plain DPLL the backup. The adviser can be anything that gives a
+value and a confidence — a model's probe, as the bridge's readers are.
+
 - `Branching.sc`, `Gated.sc` — the handler takes advice: a model's guess of which variable and which value first,
   and its confidence (dive where sure, fork where unsure). The search stays exact — a bad guess costs time, never
   correctness — and with good guesses it does 2–4× less work.
@@ -195,7 +204,6 @@ the tests, the GPU and the browser are.
 
 ## What is not done
 
-- The guided search of `Branching.sc` and `Gated.sc` (a model's guesses and confidences steering DPLL's decisions) is
-  still hand-built: in the library it is a `Judge`-like effect for the decision, its handlers the first unassigned
-  variable (now) or a model's score.
+- The guided search's other lever, the ORDER of decisions (`Branching.sc`: which variable first), is not in the
+  library: `Dpll` decides the first unassigned variable; advice chooses its value and whether to fork.
 - A UPLC-shaped CEK (delay/force, builtins as host effects) is planned (BACKLOG 4).
