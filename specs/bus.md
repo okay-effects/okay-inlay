@@ -116,6 +116,11 @@ Fixed, run by a script, no human choices:
   (§5) must add questions they cannot decide (nothing named, a value only translated, a judgement) before it can
   tell a good adapter from none. The prediction "fine readings do not carry" was not tested by this set; next, that
   set, then Qwen3.5-0.8B (another tokenizer).
+- **ON THE HARD SET (2026-11-08, okay-desk specs/data.md §32)**: the 388 held-out teacher pairs (people's wording in
+  en, ru, uk). cut19 itself 41.8% whole; the constant-state control 29.4% (119 abstained); Qwen3-1.7B through the
+  ridge map 43.0%. On people's wording the bus is worth ~12 points, and one matrix carries it within the family — the
+  map loses on the table and the condition, gains on the group and the aggregate. The kit's threshold belongs on this
+  set. Next: Qwen3.5-0.8B, another tokenizer.
 - **Relative coordinates**, in parallel: a state described by its similarities to the states of fixed anchor texts,
   computed the same way in every model — no training, and possibly a definition of the bus that names no model. If
   it carries at least what ridge carries, v2 considers defining the bus by anchors instead of by the reference.
