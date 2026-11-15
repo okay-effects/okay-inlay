@@ -71,11 +71,9 @@
     threshold scores (a score linear in a set's members, its interpreter's meaning stated) — then conflicts and unit
     propagation over all clauses and branches at once, the law against brute force as for `OrParallel`.
 
-## For okay-desk's phone ability (okay-desk specs/phone-ability.md §5, SPRINT M4; 2026-11-15)
+## okay-desk's frame training into forge (later; 2026-11-15)
 
-- **forge trains a GENERATING adapter for Qwen3-0.6B** (4-bit base, the page's 28-layer model): LoRA rank 16–32 on
-  all projections, cross-entropy on the program's tokens only, 3 seeds, over okay-desk's verified Query corpus
-  (`~/work/my/okay-desk-private/query/`). The adapter's tensor names and layout must be what okay-desk's
-  `skill/Adapted.scala` reads in the browser (check against `SemanticExport` before the first run — a mismatch shows
-  only on the phone) and what okay-mlx serves as `<repo>+<adapter>` (`Adapters.path`). This is the first step of
-  core-joint §7's one pipeline: the task source, the verifier and the measure come from okay-desk unchanged.
+- okay-desk trains its frame reader itself (`bench/FrameTrain.scala`: LoRA rank 16 on the released Qwen3 0.6B, seeds,
+  `Everyday` as the measure — specs/frames.md there). When the phone line (okay-desk specs/phone.md) has its result,
+  forge absorbs it as core-joint §7 planned: one pipeline (sources, verifiers, objectives, measures, the phone's
+  format) with FrameTrain's numbers unchanged. Not before — the line is moving fast and owns its tools.
