@@ -1,5 +1,8 @@
 # BACKLOG — okay-inlay
 
+17. **Common Horn inference** (2026-11-08; BUILT, specs/horn.md): bounded recurrent compiled block, fixed point,
+    fired-rule proof trace; `HornSuite` on JVM and Scala.js. Used by okay-desk's common sourced reasoning language.
+
 0. **okay-datalog** (operator, 2026-11-03; first) — one Datalog program, many handlers: Eval (JVM + Scala.js for
    Workers), Proof (derivation semiring), Inlay (weights on MLX), Sql; semirings as handlers; laws Eval == Inlay ==
    Proof. specs/datalog.md; okay-facts §18 uses it.
@@ -67,3 +70,12 @@
     (false literals against a clause's length: λ·(#false − |C| − |C|·#true)), not equality: the DSL needs a head of
     threshold scores (a score linear in a set's members, its interpreter's meaning stated) — then conflicts and unit
     propagation over all clauses and branches at once, the law against brute force as for `OrParallel`.
+
+## For okay-desk's phone ability (okay-desk specs/phone-ability.md §5, SPRINT M4; 2026-11-15)
+
+- **forge trains a GENERATING adapter for Qwen3-0.6B** (4-bit base, the page's 28-layer model): LoRA rank 16–32 on
+  all projections, cross-entropy on the program's tokens only, 3 seeds, over okay-desk's verified Query corpus
+  (`~/work/my/okay-desk-private/query/`). The adapter's tensor names and layout must be what okay-desk's
+  `skill/Adapted.scala` reads in the browser (check against `SemanticExport` before the first run — a mismatch shows
+  only on the phone) and what okay-mlx serves as `<repo>+<adapter>` (`Adapters.path`). This is the first step of
+  core-joint §7's one pipeline: the task source, the verifier and the measure come from okay-desk unchanged.
