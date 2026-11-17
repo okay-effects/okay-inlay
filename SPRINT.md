@@ -58,3 +58,24 @@ moves; the mask: 0 guesses against the hints, 0 invented words.
   item's last token, `Qwen3.Hook`) → `Flag`, `Count` in weights → the digits through the decode port; E trained at
   n ≤ 10, measured at n = 5..80 against M alone and the gold ceiling; the count error at n = 80 explained by the
   probe's per-item error. Then bridge-2 (LoRA under the `Names` mask on SymbolsBench), bridge-3 (compiled priors).
+
+- [ ] **readback** (2026-11-17; decides whether "narrower blocks" has a practical use on the phone) — what: in the
+  browser (okay-llm's WebGPU and WebGL2 computes, okay-desk's page), the share of a question's time spent reading
+  logits back from the GPU for the mask or the choice, per token. Why: the one concrete use of a narrow exact block
+  beside a small model is a mask computed in the same pass, with no readback (okay-desk measured 8.6 s a question
+  in the browser against 1.5 s on MLX; the readback's share is unknown). How: time `Compute`'s read calls apart
+  from the forward pass on the page's ten questions, both backends, on the Mac and on the operator's iPhone.
+  Done when: one table (backend × device: forward, readback, the rest). Under about 15% of the time: the
+  practical argument is gone, the items below stay research; say so in specs/inlay.md.
+
+- [ ] **liveness** (2026-11-17; BACKLOG "Narrower exact blocks", idea 1) — what: register allocation for the
+  residual stream. A field nobody reads after layer L frees its coordinates; a later field takes them; the width
+  becomes the largest number of fields alive at once, not their total. Why: Tracr and this DSL reserve a field's
+  subspace in every layer (write-once); no interference, so the law stays a law. How: (1) live ranges of a
+  `Program`'s fields by layer, colouring of the intervals (a straight line of layers: an optimal sweep);
+  (2) a `Clear` head — attends to its own position, writes minus the dead coordinates — with its meaning in
+  `Interpret`; (3) `Compile` with the layout by colours; (4) LawSuite and every program's suite before and
+  after. In a worktree (another session's `Horn` files are uncommitted in the main tree). Done when: the law
+  holds on all programs, and a table of widths before/after for `Count`, `Closure`, `Quotes`, `Dpll`, `Horn`.
+  A fall under about 20% on all of them: closed, recorded as a finding. Expected weak on one-step machines
+  whose state lives through the whole step.

@@ -96,3 +96,43 @@
   head off breaks the named operation only); B4 probes and activation patching on the joint stream of Qwen + the
   quote block, scored against the map. Dropped: our own rotated/noised variants (SIIT does it better) and a broad
   model zoo.
+
+## Narrower exact blocks (2026-11-17, from the operator's "can the sparse weights be compressed, differently")
+
+What the literature says (checked 2026-11-17): Tracr §5 compresses compiled models by a LEARNED projection and
+gets superposition, sometimes with another encoding of a variable (https://arxiv.org/abs/2301.05062); a theory of
+computing in superposition with error bounds and error-correcting layers (https://arxiv.org/abs/2408.05451), its
+lower bounds (https://arxiv.org/abs/2409.15318); Tracr models compressed again in 2025: algorithmic tasks RESIST
+superposition — many features active at once (https://arxiv.org/abs/2512.13568); Tracr-Injection distils a
+compiled algorithm into a pretrained model (https://arxiv.org/abs/2505.10719). So expect a few times, not orders.
+Not found: liveness/register allocation in a compiler to weights (Tracr names the lack of reuse itself); a
+compiler ALTA exists and is unread. Ideas 3–7 below are NOT checked against the literature yet.
+
+1. **Liveness** — SPRINT `liveness`.
+2. **The product with the encoding**: fewer fields alive (liveness) × fewer coordinates a field (binary codes,
+   `HandlersBinary.sc`: 85× fewer neurons). Both exact; measure the product on the same programs.
+3. **A ledger of the margin in the compiler**: half precision, a projection, quantised weights all spend the one
+   margin between a match and a mismatch (128 in the scores now). Each pass declares what it spends; `Compile`
+   proves the sum is under the margin, by the worst case over the finite fields. The fp16 break of `latest`
+   (found by experiment) becomes a compile error.
+4. **Spilling to tokens**: three places for a field — the stream's width, the depth (a looped layer), the sequence
+   (a scratch token written and read back by attention). Given a width budget (a phone), the compiler keeps what
+   fits and spills the rest. "Compile for a device."
+5. **The program as data**: one fixed interpreter block (the CEK machine is in weights already), programs given as
+   tokens; a new program needs no new weights; the small model writes it, the block runs it in the same pass.
+   Prior art: looped transformers as programmable computers — to read first.
+6. **Numbers as angles**: a counter as phases on circles of coprime periods (3, 5, 7 hold 105 values in 15
+   coordinates), addition a rotation; what trained networks find for modular arithmetic. Order comparisons are
+   hard in it.
+7. **Codes, a superoptimiser** (weaker): fields on code words of a known minimum distance instead of random
+   directions (the interference bounded by construction); a learned compression as the candidate with an
+   exhaustive check over a finite domain as the judge.
+8. **Training through the exact part needs a soft λ**: a hard attention (λ = 256) has almost no gradient, so the
+   block is differentiable in form only. Soften λ while training, restore it, re-check the law. Possibly what
+   bridge-2 lacks — unchecked.
+
+Uses, honestly: a CPU runs any of these programs better. What a narrow block buys: a mask computed in the same
+pass with no readback in the browser (SPRINT `readback` measures whether that matters); a skill as a file of a
+few kilobytes beside an unchanged base, loaded by the model's own engine; a training signal through the block
+(item 8). Not promised: the block INSIDE the model as an ordinary adapter (an adapter changes the model's heads,
+the block needs its own).
