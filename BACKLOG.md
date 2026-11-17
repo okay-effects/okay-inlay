@@ -77,3 +77,22 @@
   `Everyday` as the measure — specs/frames.md there). When the phone line (okay-desk specs/phone.md) has its result,
   forge absorbs it as core-joint §7 planned: one pipeline (sources, verifiers, objectives, measures, the phone's
   format) with FrameTrain's numbers unchanged. Not before — the line is moving fast and owns its tools.
+
+## Ground truth for interpretability (2026-11-17; the operator's question "what is okay-inlay good for")
+
+- **B0 DONE — what exists**: Tracr (RASP → weights, made as "a laboratory for interpretability",
+  https://arxiv.org/abs/2301.05062); TracrBench (121 RASP programs with weights, https://arxiv.org/abs/2409.13714);
+  **InterpBench** (NeurIPS 2024, https://arxiv.org/abs/2407.14494): transformers TRAINED to keep a Tracr circuit
+  (SIIT), so their weights look like a trained model's; later thousands of models; circuit-discovery methods
+  benchmarked on it; a 2026 follow-up asks agents to explain its circuits. Its authors' objection to plain
+  compiled weights holds for ours too: mostly zeros, no superposition, unlike a trained network.
+  So "a benchmark of compiled programs with known circuits" is DONE by others; do not repeat it.
+- **What is still ours** (each to be checked against that literature before work): (1) programs RASP benchmarks
+  do not have — machines that run many steps (CEK, effect handlers with multi-shot continuations, Datalog, DPLL,
+  `Looped`); (2) an exact block BESIDE a real language model (`WeightsPort` on Qwen): a known circuit in a real
+  model's stream; (3) the law `weights == interpreter` as a test, kept after any change of the weights.
+- **If taken up** (small, in this order): B1 the map of a compiled program — which head and neuron does which
+  operation, which coordinates hold which field — written by `Compile` and tested by ablation (switching the named
+  head off breaks the named operation only); B4 probes and activation patching on the joint stream of Qwen + the
+  quote block, scored against the map. Dropped: our own rotated/noised variants (SIIT does it better) and a broad
+  model zoo.
