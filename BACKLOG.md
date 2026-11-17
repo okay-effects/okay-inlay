@@ -118,9 +118,14 @@ compiler ALTA exists and is unread. Ideas 3–7 below are NOT checked against th
 4. **Spilling to tokens**: three places for a field — the stream's width, the depth (a looped layer), the sequence
    (a scratch token written and read back by attention). Given a width budget (a phone), the compiler keeps what
    fits and spills the rest. "Compile for a device."
-5. **The program as data**: one fixed interpreter block (the CEK machine is in weights already), programs given as
-   tokens; a new program needs no new weights; the small model writes it, the block runs it in the same pass.
-   Prior art: looped transformers as programmable computers — to read first.
+   CORRECTION (2026-11-17): the sequence as memory is BUILT — `Machine`'s trace is the heap, a cell's address its
+   position. What is left of this idea is only the choice by a width budget, between the stream and the trace.
+5. **The program as data**: CORRECTION (2026-11-17): BUILT — `Registers` ("an interpreter in weights, the program
+   in the context") and `Cek` (the term's nodes are the first positions). Not built: a use where running the
+   program inside the pass beats running it on the CPU. Candidates and what speaks against each: the small model
+   writes the program (okay-desk frames.md: writing lost to choosing, 27 right / 20 wrong against 25 / 6);
+   learning a program by gradient through the interpreter (needs item 8's soft λ; differentiable interpreters
+   are prior art with poor results against discrete search — to read before trying: TerpreT, differentiable Forth).
 6. **Numbers as angles**: a counter as phases on circles of coprime periods (3, 5, 7 hold 105 values in 15
    coordinates), addition a rotation; what trained networks find for modular arithmetic. Order comparisons are
    hard in it.
