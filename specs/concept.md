@@ -108,7 +108,9 @@ ability is five functions — its types and constructors, its options, its denot
 (theory.md §2). This concept adds two optional things from §3 and §4: a compiled form with its resource type (a
 file beside an unchanged base), and the strength of its law. (okay-shop's `okay.shop.commands`, written
 2026-11-17 without this framework, is one more such domain; it is to meet `Domain` by an adapter where the
-training lives, or be rewritten on it once okay-inlay is released — the operator's choice.) A new ability needs no training of its own if the one
+training lives, or be rewritten on it once okay-inlay is released — the operator's choice.)
+
+A new ability needs no training of its own if the one
 matcher is shared (theory.md §10; technology.md §12.4: not yet shown once).
 
 ## 7. The applications are instances
