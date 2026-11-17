@@ -68,7 +68,7 @@ moves; the mask: 0 guesses against the hints, 0 invented words.
   Done when: one table (backend × device: forward, readback, the rest). Under about 15% of the time: the
   practical argument is gone, the items below stay research; say so in specs/inlay.md.
 
-- [ ] **liveness** (2026-11-17; BACKLOG "Narrower exact blocks", idea 1) — what: register allocation for the
+- [x] **liveness** (2026-11-17; BACKLOG "Narrower exact blocks", idea 1) — what: register allocation for the
   residual stream. A field nobody reads after layer L frees its coordinates; a later field takes them; the width
   becomes the largest number of fields alive at once, not their total. Why: Tracr and this DSL reserve a field's
   subspace in every layer (write-once); no interference, so the law stays a law. How: (1) live ranges of a
@@ -79,3 +79,12 @@ moves; the mask: 0 guesses against the hints, 0 invented words.
   holds on all programs, and a table of widths before/after for `Count`, `Closure`, `Quotes`, `Dpll`, `Horn`.
   A fall under about 20% on all of them: closed, recorded as a finding. Expected weak on one-step machines
   whose state lives through the whole step.
+  DONE 2026-11-17 on branch `liveness` (not merged; specs/dsl.md "Liveness"): built whole — `Clear`, `Liveness`,
+  `Compile` on a scattered layout — and the law holds packed on every program's own inputs (58 tests, JVM and
+  Scala.js). NOT closed: the width falls 921 → 199 (78%) on `Closure`, 1312 → 645 (51%) on `Quotes.cheapBits`
+  (300 words, k = 16), 157 → 100 (36%) on `Quotes.cheap` k = 8, 396 → 219 (45%) on `OrParallel`, 467 → 352 (25%)
+  on `Cek`, 142 → 110 (22%) on `Registers`, 772 → 520 (33%) on `Dpll` n = 8. Under 20%: a bare `Count` (107 → 105,
+  2%), `Quotes.cheap` k = 32 (435 → 364, 16%), `Dpll` n = 20 (3000 → 2600, 13%). As expected the one-step
+  machines gain only from inputs handed over to outputs (0 with the inputs kept). The price: a head in nearly
+  every layer (`Dpll` 7 → 15), and dense parameters RISE where the heads dominate (`Dpll` n = 20: 148.7 M →
+  222.5 M). `Horn` not measured (not on `master`). Open: fewer clears; MLX and half precision not run.

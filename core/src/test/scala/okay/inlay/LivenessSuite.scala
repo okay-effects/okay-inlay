@@ -54,6 +54,8 @@ class LivenessSuite extends munit.FunSuite:
       Layer(heads = Seq(Lookup(Seq(ptok -> tok), Seq(prev), Seq(pos)))))("ptok written twice")
     val blind = Program(Seq(tok), Seq(Layer(heads = Seq(Clear(Seq(tok))))), 32, causal = false)
     assert(blind.problems.exists(_.contains("needs the input pos")), blind.problems)
+    // the checks look for a layer's scratch: on a gathering into what is not a set they still answer, not throw
+    bad(Layer(heads = Seq(Lookup(Seq(ptok -> tok), Seq(prev), Seq(pos), all = true))))("needs a Many of its values")
 
   test("the ranges and the sweep: a field's coordinates handed to a later one, the width the peak"):
     val p = Program(Seq(tok, pos, prev), program(true).layers.map(l => l.copy(heads = l.heads.filter {

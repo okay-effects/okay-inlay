@@ -22,9 +22,10 @@ object Layout:
     case other => sys.error(s"${other.name}: not a Many")
   /** a counting head's share of attention on the start, before the ladder reads the count from it */
   def share(c: Cat): Flag = Flag(c.name + "#share")
-  /** what a layer's heads leave for its MLP to decode: the gathered averages, the counts' shares */
+  /** what a layer's heads leave for its MLP to decode: the gathered averages, the counts' shares (the checks call
+   * this on programs not yet known to be right: a gathering into what is not a set has no scratch) */
   def scratch(l: Layer): Seq[Field] = l.heads.flatMap {
-    case h: Lookup if h.all => h.copy.map((d, _) => raw(d))
+    case h: Lookup if h.all => h.copy.collect { case (d: Many, _) => raw(d) }
     case c: Cover => c.copy.map((d, _) => raw(d))
     case c: Count => Seq(share(c.dst))
     case _ => Nil

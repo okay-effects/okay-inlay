@@ -41,7 +41,8 @@ final class Packing(val plain: Program, keep: Seq[Field]):
     assertEquals(byWeights, byReference, "the packed weights' trace against their reference's")
 
   /** the table's row: layers, fields (and the heads' scratch), heads and those added, the width before and after
-   * and its fall, the parameters (`Weights.params`: dense matrices) before and after */
+   * and its fall, the width with the inputs kept, the parameters (`Weights.params`: dense matrices) before and
+   * after */
   def row(label: String): String =
     val before = Layout.of(plain).dims
     val after = packed.layout.dims
@@ -50,5 +51,8 @@ final class Packing(val plain: Program, keep: Seq[Field]):
     val neurons = weights.layers.map(_.mlp.w1.length.toLong).sum
     def params(heads: Int, dims: Int) = heads * 2L * dims * dims + neurons * dims * 2
     require(params(heads + packed.clears, after) == weights.params)
+    // analysis only (not compiled, not run): the width if the inputs too had to stay readable to the end
+    val guarded = Liveness(plain, keep.map(_.name).toSet ++ plain.inputs.map(_.name)).layout.dims
     f"liveness | $label | ${plain.layers.size} | ${plain.fields.size} + $scratch | $heads + ${packed.clears} | " +
-      f"$before | $after | ${100.0 * (before - after) / before}%.1f%% | ${params(heads, before)} | ${weights.params} |"
+      f"$before | $after | ${100.0 * (before - after) / before}%.1f%% | $guarded | ${params(heads, before)} | " +
+      f"${weights.params} |"

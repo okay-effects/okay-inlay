@@ -229,3 +229,97 @@ optimal: the width is 3 + `Liveness.peak`, the most dims alive at once (`Packing
 no two fields sharing a coordinate are alive together). A `Clear` head is added only in a layer where coordinates
 change hands, naming only the fields whose coordinates are taken again. A program that is not causal and has no
 `pos` gets one (the embedding fills it), counted in its width.
+
+**The law, before and after.** Every suite runs its program a second time, packed, on the inputs it already ran
+(`Packing`, one or two lines a suite): the packed program's reference keeps the plain reference's values on every
+field it still has; the packed weights, run, decode to the packed reference. For the machines the packed runners'
+traces equal the plain reference's trace (restricted to the fields left), step by step, and the answers and step
+counts are the same. `LivenessSuite`: the `Clear` head alone (causal and not), its checks, the ranges of a small
+program by hand, and a mutation — the packed layout without its clears is not the program. `sbt coreJVM/test` and
+`sbt coreJS/test`: 58 tests, 57 passed, 1 skipped (`DpllBigSuite`, opt-in), with the plain assertions unchanged.
+
+**Measured** (the rows are printed by the suites: `sbt coreJVM/test 2>&1 | grep '^liveness'`). Layers; fields
+(+ the heads' scratch); heads (+ the clears added); the width (residual dims) plain and packed, and its fall; the
+width if the inputs too had to stay readable to the end (analysis only: not compiled); `Weights.params` (dense:
+2d² a head, 2d a neuron) plain → packed. What is kept: a quote's `inside` and `allowed`; the closure's `yes`,
+`on`, `cycle`; a count's count; a machine's carried outputs (DPLL: also what its `run` reads of a trace — `REQ`,
+`P_HAS`, `PHASE`, `FREE`).
+
+| program | layers | fields | heads | width | packed | fall | inputs kept | params |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| a table lookup (`LawSuite`) | 1 | 4 + 0 | 1 + 1 | 21 | 17 | 19.0% | 21 | 882 → 1,156 |
+| the previous token (`LawSuite`) | 1 | 4 + 0 | 1 + 1 | 27 | 21 | 22.2% | 27 | 1,458 → 1,764 |
+| induction, the latest marker (`LawSuite`) | 4 | 9 + 0 | 3 + 2 | 47 | 21 | 55.3% | 39 | 14,100 → 4,788 |
+| rules only (`LawSuite`) | 1 | 5 + 0 | 0 + 0 | 14 | 14 | 0.0% | 14 | 168 → 168 |
+| `Count`, cap 100 | 1 | 3 + 1 | 1 + 1 | 107 | 105 | 1.9% | 107 | 65,912 → 86,310 |
+| `Count`, cap 64 (the orders) | 1 | 3 + 1 | 1 + 1 | 73 | 69 | 5.5% | 73 | 29,492 → 36,846 |
+| `Cover` (conflict, units) | 1 | 9 + 3 | 2 + 1 | 55 | 29 | 47.3% | 55 | 14,960 → 6,554 |
+| `Quotes.window`, k = 1 | 4 | 14 + 1 | 3 + 4 | 63 | 34 | 46.0% | 48 | 26,586 → 17,680 |
+| `Quotes.window`, k = 3 | 4 | 20 + 1 | 7 + 4 | 97 | 67 | 30.9% | 74 | 135,994 → 101,706 |
+| `Quotes.window`, k = 6 | 4 | 29 + 1 | 13 + 4 | 148 | 103 | 30.4% | 125 | 576,016 → 365,238 |
+| `Quotes.cheap`, k = 1 | 5 | 15 + 2 | 4 + 5 | 66 | 36 | 45.5% | 50 | 38,148 → 25,128 |
+| `Quotes.cheap`, k = 3 | 5 | 20 + 2 | 6 + 4 | 95 | 55 | 42.1% | 66 | 115,710 → 64,790 |
+| `Quotes.cheap`, k = 6 | 6 | 27 + 2 | 7 + 4 | 135 | 78 | 42.2% | 106 | 271,350 → 143,208 |
+| `Quotes.cheap`, k = 8 | 6 | 31 + 2 | 7 + 4 | 157 | 100 | 36.3% | 128 | 368,322 → 234,800 |
+| `Quotes.cheap`, k = 16 | 7 | 48 + 2 | 8 + 5 | 252 | 188 | 25.4% | 223 | 1,081,584 → 967,824 |
+| `Quotes.cheap`, k = 32 | 8 | 81 + 2 | 9 + 6 | 435 | 364 | 16.3% | 406 | 3,616,590 → 4,151,056 |
+| `Quotes.cheapBits`, 6 words, k = 4 | 5 | 24 + 2 | 6 + 4 | 110 | 56 | 49.1% | 76 | 158,840 → 69,664 |
+| `Quotes.cheapBits`, 40 words, k = 8 | 6 | 33 + 2 | 7 + 4 | 306 | 169 | 44.8% | 204 | 1,441,872 → 700,674 |
+| `cheapBits`, 300 words, k = 16 | 7 | 50 + 2 | 8 + 5 | 1312 | 645 | 50.8% | 956 | 30,034,304 → 12,042,150 |
+| `Closure`, 12 names, 4 rounds | 12 | 31 + 10 | 5 + 11 | 921 | 199 | 78.4% | 263 | 10,637,550 → 1,732,892 |
+| `Registers` | 2 | 15 + 0 | 1 + 1 | 142 | 110 | 22.5% | 142 | 320,636 → 265,540 |
+| `Cek`, 1,024 positions | 1 | 48 + 0 | 2 + 1 | 467 | 352 | 24.6% | 467 | 4,523,362 → 3,495,360 |
+| `OrParallel`, 3 variables, 12 slots | 5 | 46 + 3 | 5 + 4 | 396 | 219 | 44.7% | 316 | 2,411,640 → 1,329,768 |
+| `Dpll`, n = 3, 20 slots | 9 | 72 + 6 | 7 + 8 | 367 | 232 | 36.8% | 245 | 2,323,110 → 1,891,264 |
+| `Dpll`, n = 6, 20 slots | 9 | 102 + 6 | 7 + 8 | 574 | 344 | 40.1% | 387 | 5,593,056 → 4,137,632 |
+| `Dpll`, n = 8, 20 slots | 9 | 122 + 6 | 7 + 8 | 772 | 520 | 32.6% | 569 | 10,036,000 → 9,251,840 |
+| `Dpll`, n = 10, 20 slots | 9 | 142 + 6 | 7 + 8 | 1018 | 744 | 26.9% | 799 | 17,346,720 → 18,680,352 |
+| `Dpll`, n = 12, 24 slots (guided) | 9 | 162 + 6 | 7 + 8 | 1344 | 1032 | 23.2% | 1097 | 30,148,608 → 35,682,432 |
+| `Dpll`, n = 20, 24 slots | 9 | 242 + 6 | 7 + 8 | 3000 | 2600 | 13.3% | 2689 | 148,704,000 → 222,476,800 |
+
+(The last row: `DPLL_BIG=1 sbt -J-Xmx6g "coreJVM/testOnly okay.inlay.DpllBigSuite"` — n = 20, m = 85, 0 models, 15
+branch nodes, the packed traces equal to the plain reference's; with sbt's default heap the suite runs out of
+memory, plain weights and packed together.)
+
+(`Horn` is not on `master`; it is not measured.)
+
+**What the numbers say.**
+
+1. *The idea is not closed, and it is not uniform.* The SPRINT's bar was a fall under about 20% everywhere. It
+   is not under 20% everywhere: 78% on `Closure`, 45–51% on the quotes over bits, 30–46% on the quotes over
+   one-hot tokens up to k = 8, 45% on `OrParallel`, 22–25% on `Registers` and `Cek`, 23–40% on `Dpll` up to
+   n = 12. It IS under 20% on a bare `Count` (2–6%), a one-head table lookup (19%), rules alone (0%), the widest
+   quote (k = 32: 16%) and DPLL at the experiment's size (n = 20: 13%). The expectation written before the
+   measurement — modest — holds for those and was wrong for the deep programs of moderate size.
+2. *Where the fall comes from.* (a) Rounds: `Closure` doubles for four rounds, and a round's sets die once the
+   next round has united them, so only neighbouring rounds' sets are alive together, not all. (b) The inputs: a field
+   read only by heads — a builtin position, a table's column, a machine's state consumed by the lookup — is free
+   in the layer that reads it, and that layer's own results sit where it was. (c) The heads' scratch, alive for
+   one layer. (d) Coordinates that need not be neighbours, so nothing is lost to fragmentation.
+3. *One-step machines gain only from (b)* — as the SPRINT expected, for the reason it gave. With the inputs kept,
+   `Cek`, `Registers`, `Cover` and the one-layer programs fall by 0: a one-layer step's state lives through the
+   whole step. Their 22–47% is entirely the inputs handed over to the outputs, which is sound for a machine (the
+   next step's inputs are embedded again from the carried outputs) but is a statement about the read-out: whoever
+   wants to read a step's inputs from its last layer must keep them. The deep programs keep most of their fall
+   with the inputs kept (`Closure` 921 → 263, `Dpll` n = 10 1018 → 799, `OrParallel` 396 → 316).
+4. *Where it is weak, and why.* A quote's k previous tokens are the KEYS of the last layer's lookup, so they live
+   to the end; they are most of the width, more so as k grows (k = 32: 16%). A count's width is its own answer's
+   one-hot. DPLL's state is 2n one-hot fields of n values, carried from step to step and so alive throughout: it
+   grows as n² while what dies grows as n, and the fall shrinks with n (n = 6: 40%, 10: 27%, 12: 23%, 20: 13%).
+   All three are the encoding's width, not the layout's — BACKLOG's idea 2 (binary codes), not this one.
+5. *The price: a head in nearly every layer, and dense parameters can RISE.* A clear is one more head (d × d
+   twice in a dense file, though it holds one number in `qk` and a −1 a cleared dim in `ov`). `Dpll` goes from 7
+   heads to 15 and, from n = 10 on, has MORE dense parameters packed than plain (17.3 M → 18.7 M; n = 12: 30.1 M →
+   35.7 M; n = 20: 148.7 M → 222.5 M); so do `Quotes.cheap` k = 32 and the bare counts. Narrower is not smaller
+   unless the heads are stored sparsely or the clears are fewer.
+
+**Not done, not verified.**
+- The packed weights were run by `Forward` on the CPU only (JVM and Scala.js). Not on MLX (`OnMlx`: the GPU was
+  busy with another session's training), not in half precision (`HalfSuite`'s question), not beside a model.
+  A clear's score is ε·position, the same size as a `latest` lookup's position term — the one that broke float16.
+- Fewer clears were not tried: a clear is placed in the first layer where a field is dead; placing it in the layer
+  where its coordinates are first needed and merging would cut heads at no cost in width. A clear by the MLP (two
+  neurons a dim, no head) would also free a rule-read field one stage earlier. Neither is built.
+- The product with binary codes (BACKLOG "Narrower exact blocks", idea 2) is not measured.
+- Nothing else uses the packed layout yet: `Compile(p)`, the bridge, the web page and the MLX benches are as they
+  were.
