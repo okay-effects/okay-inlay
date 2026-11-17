@@ -17,6 +17,8 @@ class ClosureSuite extends munit.FunSuite:
   test("closure in weights == the interpreter == plain search; attribution and cycles"):
     val (p, _) = Closure.program(names, 40, 4)
     val w = Compile(p)
+    val packing = Packing(p, p.fields.filter(f => Set("yes", "on", "cycle")(f.name)))
+    println(packing.row("Closure 12 names, 4 rounds"))
     val rnd = new scala.util.Random(3)
     var yes = 0; var cycles = 0
     for trial <- 1 to 40 do
@@ -28,6 +30,7 @@ class ClosureSuite extends munit.FunSuite:
       val got = Forward.run(p, w, in)
       assertEquals(got.map(_.filter((k, _) => Set("yes", "on", "cycle")(k))),
         ref.map(_.filter((k, _) => Set("yes", "on", "cycle")(k))), s"trial $trial")
+      packing.law(in, ref)
       val (truth, used, onCycle) = Closure.reference(sentences, q)
       val last = ref.last
       assertEquals(last("yes"), Val.F(truth), s"trial $trial: $q over ${sentences.mkString(" ")}")

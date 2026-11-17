@@ -126,6 +126,20 @@ final case class Cover(copy: Seq[(Many, Field)], query: Seq[Field], key: Seq[Fie
   def wild: Boolean = false
   def writes: Seq[Field] = copy.map(_._1)
 
+/**
+ * A CLEARING HEAD (specs/dsl.md "Liveness"): each position attends to itself alone and writes minus what `fields`
+ * hold there — afterwards the fields are absent from the record (the reference simply drops them) and their
+ * coordinates are zero again, free for a field written in this layer or later. The other heads of the layer still
+ * read the fields (heads read the records as the layer found them); its rules and everything later do not.
+ * `fields` may name a head's scratch (`Layout.scratch`), which no record ever holds. Compiled: a causal program's
+ * latest position is itself (ε·position); a program that is not causal compares its `pos` input with itself.
+ */
+final case class Clear(fields: Seq[Field]) extends Head:
+  def query: Seq[Field] = Nil
+  def key: Seq[Field] = Nil
+  def wild: Boolean = false
+  def writes: Seq[Field] = Nil
+
 /** an attention head: what it compares, what it writes */
 sealed trait Head extends Op:
   def query: Seq[Field]
@@ -147,10 +161,23 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
     (inputs ++ layers.flatMap(l => l.heads.flatMap(_.writes) ++ l.rules.flatMap(_.sets.map(_.target))))
       .distinct.toVector
 
-  /** what is wrong with it, if anything: write-once fields, read only after written, types matching */
+  /** the names `Clear` heads take away, in any layer */
+  def cleared: Set[String] = layers.flatMap(_.heads.collect { case c: Clear => c.fields.map(_.name) }.flatten).toSet
+
+  /** the fields a run ends with: every field but those cleared on the way */
+  def outputs: Vector[Field] =
+    val gone = cleared
+    fields.filterNot(f => gone(f.name))
+
+  /** what is wrong with it, if anything: write-once names, read only after written and before cleared, types
+   * matching */
   def problems: Vector[String] =
     val out = Vector.newBuilder[String]
     val known = scala.collection.mutable.Set.from(inputs.map(_.name))
+    // the names cleared so far (never written again: a name is written once, only its coordinates are reused), and
+    // the earlier layers' scratch, which a clear may name
+    val gone = scala.collection.mutable.Set.empty[String]
+    val scratch = scala.collection.mutable.Set.empty[String]
     def same(a: Field, b: Field) = (a, b) match
       case (Cat(_, x), Cat(_, y)) => x == y
       case (Bits(_, x), Bits(_, y)) => x == y
@@ -163,10 +190,12 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
     if inputs.map(_.name).distinct.size != inputs.size then out += "an input given twice"
     for (l, n) <- layers.zipWithIndex do
       def read(f: Field, by: String) =
-        if !known(f.name) then out += s"layer $n: $by reads ${f.name} before it is written"
+        if gone(f.name) then out += s"layer $n: $by reads ${f.name} after it is cleared"
+        else if !known(f.name) then out += s"layer $n: $by reads ${f.name} before it is written"
       val headWrites = l.heads.flatMap(_.writes)
       for h <- l.heads do
-        if h.query.size != h.key.size || h.query.isEmpty then out += s"layer $n: a head's query and key pair up"
+        if !h.isInstanceOf[Clear] && (h.query.size != h.key.size || h.query.isEmpty) then
+          out += s"layer $n: a head's query and key pair up"
         for (q, k) <- h.query.zip(h.key) do
           read(q, "a head"); read(k, "a head")
           val member = (q, k) match
@@ -198,8 +227,20 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
           case c: Count =>
             if c.dst.values != (0 to c.cap).map(_.toString) then
               out += s"layer $n: a count's ${c.dst.name} has the values 0 to K in order"
+          case _: Clear => ()
+      // the clears, after every head of the layer has read: a field known (or an earlier layer's scratch), once
+      val clears = l.heads.collect { case c: Clear => c.fields.map(_.name) }.flatten
+      for f <- clears.distinct do
+        if gone(f) || clears.count(_ == f) > 1 then out += s"layer $n: $f cleared twice"
+        else if !known(f) && !scratch(f) then out += s"layer $n: $f cleared before it is written"
+        else if !causal && f == "pos" then out += s"layer $n: pos cleared in a program that is not causal"
+      if clears.nonEmpty && !causal && !inputs.exists(f => f.name == "pos" && Builtin.isBuiltin(f)) then
+        out += s"layer $n: a clear in a program that is not causal needs the input pos"
+      known --= clears
+      gone ++= clears
+      scratch ++= Layout.scratch(l).map(_.name)
       for w <- headWrites do
-        if known(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name
+        if known(w.name) || gone(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name
       val ruleWrites = l.rules.flatMap(_.sets.map(_.target)).distinct
       // what this layer's MLP decodes (a gathered set, a count: the head writes a share, the MLP the value) — not
       // yet there for the same layer's rules
@@ -229,7 +270,7 @@ final case class Program(inputs: Seq[Field], layers: Seq[Layer], maxLen: Int = 6
               out += s"layer $n: ${s.name} united into ${d.name} of other values"
           case _ => () }
       for w <- ruleWrites do
-        if known(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name
+        if known(w.name) || gone(w.name) then out += s"layer $n: ${w.name} written twice" else known += w.name
     out.result()
 
   def checked: Program =

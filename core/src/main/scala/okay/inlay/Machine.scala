@@ -74,7 +74,7 @@ object Machine:
       for (l, k) <- q.layers.zipWithIndex do
         seen(k) += r
         val rs = seen(k).toVector
-        r = r ++ l.heads.flatMap(h => Interpret.lookup(h, rs, n - 1, causal = true))
+        r = (r ++ l.heads.flatMap(h => Interpret.lookup(h, rs, n - 1, causal = true))) -- Interpret.cleared(l)
         r = r ++ Interpret.rules(l.rules, r)
       r
 
@@ -99,4 +99,4 @@ object Machine:
       for (l, k) <- w.layers.zipWithIndex do
         xs(k) += x; nz(k) += Forward.nonZeroDims(x)
         x = Forward.row(w, l, xs(k).toIndexedSeq, nz(k).toIndexedSeq, xs(k).size - 1)
-      q.fields.map(f => f.name -> Forward.decode(w.layout, f, x)).toMap
+      q.outputs.map(f => f.name -> Forward.decode(w.layout, f, x)).toMap

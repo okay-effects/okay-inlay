@@ -7,12 +7,14 @@ class OrParallelSuite extends munit.FunSuite:
   override val munitTimeout = scala.concurrent.duration.Duration(30, "min")
   val m = OrParallel.Program(nv = 3, npc = 24, slots = 12, maxLen = 512, maxTurns = 32)
   lazy val weights = Compile(m.step)
+  lazy val packing = Packing(m.step, m.machine.carry.map(_._1))
 
   test("the step program"):
     assert(m.step.problems.isEmpty, m.step.problems.mkString("; "))
     val w = weights
     println(s"or-parallel: ${w.layers.size} layers, ${w.layers.map(_.heads.size).sum} heads, " +
       s"${w.layers.map(_.mlp.w1.length).sum} neurons, residual ${w.layout.dims}, ${m.slots} slots")
+    println(packing.row("OrParallel 3 variables, 12 slots"))
 
   val rnd = new scala.util.Random(7)
   val random = (1 to 4).map(i => s"random 3-CNF #$i" -> Seq.fill(4)(Seq.fill(3)(rnd.nextInt(3) -> rnd.nextBoolean())))
@@ -26,3 +28,6 @@ class OrParallelSuite extends munit.FunSuite:
       assertEquals(byW, byRef)
       assertEquals(wTurns, turns)
       assertEquals(wRun.trace, refRun.trace)
+      val (byP, pTurns, _, pRun) = m.run(prog, packing.runner)
+      assertEquals((byP, pTurns), (byRef, turns))
+      packing.traces(m.run(prog, packing.reference)._4.trace, pRun.trace, refRun.trace)

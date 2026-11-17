@@ -123,6 +123,19 @@ A lookup's start row scores half a gap below a match (`qk[One][Start] += top −
 matches, and carries zeros — none. `latest` adds `Eps` per position (`qk[One][PosNum] = Eps`). `ov` is the identity
 from src to dst (into `raw(dst)` for `all`).
 
+**Liveness (branch `liveness`, specs/dsl.md "Liveness") — `Liveness.scala`.**
+
+```scala
+Clear(fields: Seq[Field])                                   // a head: the fields absent afterwards, their dims 0
+Liveness(p: Program, keep: Set[String]): Liveness.Packed    // .program (with its clears), .layout, .ranges, .clears
+Compile(p: Program, layout: Layout): Weights                // Compile(packed.program, packed.layout)
+p.outputs: Vector[Field]                                    // the fields a run ends with: all but the cleared
+```
+
+`Layout(offsets, dims, scattered)`: `ix(f, i)` is the coordinate of a field's i-th dim in either kind of layout;
+`at(f)` is its first. `Compile(p)` is the plain layout, as before. `Forward.run`, `Interpret.run` and the machines'
+runners return `p.outputs`.
+
 **Count.** The start scores as a match (`qk[One][Start] += top`), so it receives 1/(c+1) of the attention;
 `ov[share][Start] = 1` copies that share. The MLP decodes it: with S = 4(K+1)² and tₙ = 1/(n + ½),
 `Gₙ = [c ≥ n] = clamp(S·(tₙ − x), 0, 1)`; the one-hot "n" is `Gₙ − Gₙ₊₁`, "0" is `1 − G₁` — 2K + 1 neurons.

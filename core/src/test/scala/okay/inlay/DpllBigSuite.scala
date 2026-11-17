@@ -18,3 +18,8 @@ class DpllBigSuite extends munit.FunSuite:
     assertEquals(byRef, Dpll.models(20, cnf))
     assertEquals(byW, byRef)
     assertEquals(wRun.trace, refRun.trace)
+    val packing = Packing(m.step, m.machine.carry.map(_._1) ++ Seq(m.req, m.pHas, m.phase, m.free))
+    println(packing.row("Dpll n = 20, 24 slots"))
+    val (byP, pTurns, _, _, pRun) = m.run(cnf, packing.runner)
+    assertEquals((byP, pTurns), (byRef, turns))
+    packing.traces(m.run(cnf, packing.reference)._5.trace, pRun.trace, refRun.trace)

@@ -8,12 +8,14 @@ class CekSuite extends munit.FunSuite:
   override val munitTimeout = scala.concurrent.duration.Duration(20, "min")
   val cek = Cek.Program(1024)
   lazy val weights = Compile(cek.step)
+  lazy val packing = Packing(cek.step, cek.machine.carry.map(_._1))
 
   test("the step program: two heads, the rules, its size"):
     assert(cek.step.problems.isEmpty, cek.step.problems.mkString("; "))
     val w = weights
     println(s"the step: ${w.layers.size} layer, ${w.layers.head.heads.size} heads, ${w.layers.head.mlp.w1.length} " +
       s"neurons, residual ${w.layout.dims}, ${w.params} parameters, pointers of ${cek.bits} bits")
+    println(packing.row("Cek 1024"))
 
   for (label, t) <- Cek.cases do
     test(s"$label: the weights == the DSL's reference == the ordinary machine"):
@@ -25,3 +27,6 @@ class CekSuite extends munit.FunSuite:
       assertEquals(byW, refAnswer)
       assertEquals(wSteps, refSteps)
       assertEquals(wRun.trace, refRun.trace)
+      val (byP, pSteps, pRun) = cek.run(t, packing.runner)
+      assertEquals((byP, pSteps), (refAnswer, refSteps))
+      packing.traces(cek.run(t, packing.reference)._3.trace, pRun.trace, refRun.trace)

@@ -32,9 +32,14 @@ object Interpret:
     for l <- p.layers do
       // the heads read the records as the layer found them, in parallel
       val heard = rs.indices.map(i => l.heads.flatMap(h => lookup(h, rs, i, p.causal)).toMap)
-      rs = rs.indices.map(i => rs(i) ++ heard(i)).toVector
+      // (a cleared field is absent from here on: the layer's rules do not see it)
+      val gone = cleared(l)
+      rs = rs.indices.map(i => (rs(i) ++ heard(i)) -- gone).toVector
       rs = rs.map(r => r ++ rules(l.rules, r))
     rs
+
+  /** the names a layer's `Clear` heads take away */
+  def cleared(l: Layer): Set[String] = l.heads.collect { case c: Clear => c.fields.map(_.name) }.flatten.toSet
 
   private def defined(v: Val): Boolean = v match
     case Val.C(x) => x.isDefined
@@ -60,6 +65,7 @@ object Interpret:
 
   /** position i's reading of one head (`rs` indexed from position 1) */
   def lookup(h: Head, rs: Vector[Record], i: Int, causal: Boolean = true): Seq[(String, Val)] = h match
+    case _: Clear => Nil
     case c: Count => Seq(c.dst.name -> Val.C(Some(math.min(matches(c, rs, i, causal).size, c.cap).toString)))
     case c: Cover =>
       // the candidates: equal on the pairs, apart where they must be, at most `slack` members uncovered; the fewest

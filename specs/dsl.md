@@ -180,3 +180,52 @@ some sets apart, the fewest uncovered gathered — linear in the sets, so compil
 meaning, `CoverSuite` checks both. `Dpll` writes experiments/Dpll.sc with it (conflict: slack 0; units: slack 1, no
 literal true), 8 layers; `DpllSuite` and `DpllBigSuite` (n = 20, m = 85: 15 branch nodes, as the experiment). With
 the CEK machine and or-parallel search, the machine experiments are now programs of the library; BACKLOG 16 done.
+
+## Liveness: register allocation for the residual stream (2026-11-17; branch `liveness`)
+
+SPRINT `liveness`; BACKLOG "Narrower exact blocks", idea 1. The plain layout (`Layout.of`, Tracr's too) gives every
+field its own coordinates in every layer. A field nobody reads after layer L can give its coordinates to a later
+field; the width is then the most dims alive at once, not their total. Built whole: the analysis, the `Clear` head
+with its meaning in the reference, the compiler on a layout by liveness, and the law re-checked on every program.
+The plain layout stays the default (`Compile(p)`); the packed one is `Liveness(p, keep)` →
+`Compile(packed.program, packed.layout)`.
+
+**The `Clear` head.** `Clear(fields)`: each position attends to itself alone and writes minus what `fields` hold
+there. In the reference (`Interpret`) the fields are simply absent from the record afterwards. Compiled: a causal
+program's latest visible position is itself, so the score is ε·position (`qk[One][PosNum] = Eps`: the neighbour
+128 below, exp(−128) = 0 in float32); a program that is not causal compares its `pos` bits with themselves (a
+mismatch a whole λ below) and the start, which has no position, finds itself by its own dim (`qk[Start][Start] =
+λ`). `ov` is −1 on the fields' coordinates. The attention weight is exactly 1 and `x + (−x)` is exactly 0 in
+floating point whatever x was (a gathered average, a share), so a cleared coordinate is 0 exactly — at every
+position, the start too (`LivenessSuite` asserts the zeros).
+
+**What write-once means now.** A NAME is still written once, and never again after it is cleared — a record is
+still SSA. A COORDINATE is written once per life: it must be exactly 0 when a field is added to it, which is why a
+field is cleared before its coordinates are handed on. A field is read only between its writing and its clearing.
+The checks (`Program.problems`):
+- the heads of the layer that clears a field still read it — heads read the records as the layer found them —
+  but that layer's rules and everything later do not: "reads x after it is cleared";
+- a field is cleared once, and only if written in an earlier layer: a head's write lands in the layer's output, so
+  the same layer's clear would subtract nothing ("cleared before it is written");
+- a cleared name is not written again ("written twice");
+- a clear may name an earlier layer's scratch (`x#raw`, `x#share`), which no record ever holds;
+- a clear in a program that is not causal needs the input `pos`, which is then never cleared.
+`Interpret.run`, `Forward.run` and the machines' runners return `p.outputs` — every field but the cleared.
+
+**When coordinates are free** (`Liveness.ranges`). A layer is two stages, the heads (in parallel, each reading the
+layer's input) and then the MLP; a clear acts at the head stage. So a field last read by a HEAD of layer b is
+cleared in layer b itself; one last read by the RULES of layer b (or by its MLP's ladder: a head's scratch) in
+layer b + 1; one nobody reads and nobody keeps, in the layer after its writing. Coordinates cleared in layer c
+serve any field written in layer c or later — also by a head of layer c itself: the heads add in parallel, minus
+the old plus the new. (Exact for the 0 / ±1 codes; for an average of several matches the sum `(new − old) + old`
+can differ from `new` in the last bit, far inside the ladders' and the decoder's tolerance, as an average of
+thirds already is.) What is read out at the end — `keep`: a suite's read-out, a machine's carried outputs — is
+never cleared.
+
+**The colouring** (`Liveness.apply`). A field of d dims is d unit intervals: its coordinates need not be
+neighbours (`Layout.scattered`, `Layout.ix(field, i)`), so this is interval colouring, not storage allocation
+with fragmentation, and the sweep — fields by their first layer, each dim on the lowest free coordinate — is
+optimal: the width is 3 + `Liveness.peak`, the most dims alive at once (`Packing` requires the equality, and that
+no two fields sharing a coordinate are alive together). A `Clear` head is added only in a layer where coordinates
+change hands, naming only the fields whose coordinates are taken again. A program that is not causal and has no
+`pos` gets one (the embedding fills it), counted in its width.

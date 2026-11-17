@@ -7,9 +7,12 @@ import Interpret.Record
 class LawSuite extends munit.FunSuite:
   private val r = scala.util.Random(42)
 
-  /** the law on `n` random inputs; inputs the reference finds inexact skipped (at most half) */
-  private def law(p: Program, n: Int)(gen: => Vector[Record]): Unit =
+  /** the law on `n` random inputs; inputs the reference finds inexact skipped (at most half) — and on the same
+   * inputs the law of the program packed by liveness, `out` its read-out */
+  private def law(p: Program, n: Int, out: Field*)(gen: => Vector[Record]): Unit =
     val w = Compile(p)
+    val packing = Packing(p, out)
+    println(packing.row(s"LawSuite: ${out.map(_.name).mkString(", ")}"))
     var exact = 0
     for _ <- 1 to n do
       val in = gen
@@ -18,6 +21,7 @@ class LawSuite extends munit.FunSuite:
         exact += 1
         val got = Forward.run(p, w, in)
         assertEquals(got, want, s"inputs: $in")
+        packing.law(in, want)
       }
     assert(exact * 2 >= n, s"only $exact of $n inputs exact")
 
@@ -35,7 +39,7 @@ class LawSuite extends munit.FunSuite:
     val out = Interpret.run(p, in)
     assertEquals(out.map(_("got")), Vector(Val.C(None), Val.C(None), c("25"), Val.C(None)))
     assertEquals(Forward.run(p, Compile(p), in), out)
-    law(p, 300) {
+    law(p, 300, got) {
       // rows of distinct keys, then queries
       val rows = r.shuffle(skus).take(r.nextInt(4)).map(k => Map("key" -> c(k), "price" -> c(pick(price.values))))
       (rows ++ Vector.fill(len(5))(Map("ask" -> c(pick(skus))))).toVector
@@ -51,7 +55,7 @@ class LawSuite extends munit.FunSuite:
     val p = Program(Seq(tok, pos, prev), Seq(Layer(heads = Seq(Lookup(Seq(ptok -> tok), Seq(prev), Seq(pos))))), 32)
     val in = text(5)
     assertEquals(Interpret.run(p, in).map(_("ptok")), Val.C(None) +: in.init.map(_("tok")))
-    law(p, 200)(text(len(31)))
+    law(p, 200, ptok)(text(len(31)))
 
   test("induction and the latest marker — the quote's core: inside [ ], what a copy would continue with"):
     val ptok = Cat("ptok", vocab)
@@ -71,7 +75,7 @@ class LawSuite extends munit.FunSuite:
     assertEquals(out.map(_("mark")), Vector(None, None, None, Some("["), Some("["), Some("[")).map(Val.C(_)))
     assertEquals(out.last("copy"), c("c"))
     assertEquals(Forward.run(p, Compile(p), in), out)
-    law(p, 300)(text(len(31)))
+    law(p, 300, mark, copy)(text(len(31)))
 
   test("rules: guards positive and negative, flags, copies — AND-neurons"):
     val (kind, size, urgent, lane, echo) = (Cat("kind", Vector("bug", "task", "idea")), Cat("size", Vector("s", "l")),
@@ -81,7 +85,7 @@ class LawSuite extends munit.FunSuite:
       Rule(Seq(Guard.Off(urgent), Guard.Is(kind, "bug")), Seq(Write.To(lane, "soon"))),
       Rule(Seq(Guard.Off(urgent), Guard.IsNot(kind, "bug"), Guard.Is(size, "s")), Seq(Write.To(lane, "soon"))),
       Rule(Seq(Guard.Off(urgent), Guard.IsNot(kind, "bug"), Guard.Is(size, "l")), Seq(Write.To(lane, "later")))))), 16)
-    law(p, 300)(Vector.fill(len(15))(Map("kind" -> c(pick(kind.values)), "size" -> c(pick(size.values)),
+    law(p, 300, lane, echo)(Vector.fill(len(15))(Map("kind" -> c(pick(kind.values)), "size" -> c(pick(size.values)),
       "urgent" -> Val.F(r.nextBoolean()))))
 
   test("the checks: a field written twice, read before written, compared across kinds"):

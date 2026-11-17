@@ -19,17 +19,23 @@ class GuidedSuite extends munit.FunSuite:
 
   val m = Dpll.Program(n, slots = 24, maxLen = 1536)
   lazy val w = Compile(m.step)
+  lazy val packing = Packing(m.step, m.machine.carry.map(_._1) ++ Seq(m.req, m.pHas, m.phase, m.free))
   /** the search by both handlers of the step — the law — and its outcome */
   def search(cnf: Vector[Dpll.Clause], advice: Map[Int, (Boolean, Boolean)]): Dpll.Search =
     val ref = m.guided(cnf, Machine.reference(m.step), advice, firstOnly = true)
     val got = m.guided(cnf, Machine.weights(m.step, w), advice, firstOnly = true)
     assertEquals(got.run.trace, ref.run.trace)
+    val packed = m.guided(cnf, packing.runner, advice, firstOnly = true)
+    assertEquals((packed.found, packed.turns, packed.nodes), (got.found, got.turns, got.nodes))
+    packing.traces(m.guided(cnf, packing.reference, advice, firstOnly = true).run.trace, packed.run.trace,
+      ref.run.trace)
     got.found.foreach(a => assert(satisfies(cnf, a), s"a model that does not satisfy: $a"))
     got
 
   test("plain, exact advice, noisy advice with plain DPLL as the backup"):
     val rnd = new scala.util.Random(21)
     var plainNodes = 0; var exactNodes = 0; var noisyNodes = 0; var noisyFound = 0
+    println(packing.row(s"Dpll n = $n, 24 slots (guided)"))
     for i <- 1 to 4 do
       val (cnf, plant) = planted(rnd, 51)
       val plain = search(cnf, Map.empty)

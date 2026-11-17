@@ -1,10 +1,16 @@
 package okay.inlay
 
 /** where each field lives in the residual stream: three fixed dims first (one, the start, the position as a number),
- * then the fields in the program's order, then the gathering heads' raw averages */
-final case class Layout(offsets: Map[String, Int], dims: Int):
-  def at(f: Field): Int = offsets(f.name)
-  def dim(f: Cat, v: String): Int = at(f) + f.index(v)
+ * then the fields in the program's order, then the gathering heads' raw averages. `scattered`: fields laid out by
+ * `Liveness` instead — each on its own coordinates, any of them, shared over time with fields not alive together */
+final case class Layout(offsets: Map[String, Int], dims: Int, scattered: Map[String, Vector[Int]] = Map.empty):
+  /** the coordinate of a field's i-th dim */
+  def ix(f: Field, i: Int): Int = scattered.get(f.name) match
+    case Some(coordinates) => coordinates(i)
+    case None => offsets(f.name) + i
+  /** a field's first coordinate (the others follow it only in a layout that is not scattered) */
+  def at(f: Field): Int = ix(f, 0)
+  def dim(f: Cat, v: String): Int = ix(f, f.index(v))
 
 object Layout:
   val One = 0
@@ -16,14 +22,15 @@ object Layout:
     case other => sys.error(s"${other.name}: not a Many")
   /** a counting head's share of attention on the start, before the ladder reads the count from it */
   def share(c: Cat): Flag = Flag(c.name + "#share")
+  /** what a layer's heads leave for its MLP to decode: the gathered averages, the counts' shares */
+  def scratch(l: Layer): Seq[Field] = l.heads.flatMap {
+    case h: Lookup if h.all => h.copy.map((d, _) => raw(d))
+    case c: Cover => c.copy.map((d, _) => raw(d))
+    case c: Count => Seq(share(c.dst))
+    case _ => Nil
+  }
   def of(p: Program): Layout =
-    val scratch = p.layers.flatMap(_.heads.flatMap {
-      case h: Lookup if h.all => h.copy.map((d, _) => raw(d))
-      case c: Cover => c.copy.map((d, _) => raw(d))
-      case c: Count => Seq(share(c.dst))
-      case _ => Nil
-    })
-    val all = p.fields ++ scratch
+    val all = p.fields ++ p.layers.flatMap(scratch)
     val offs = all.scanLeft(3)(_ + _.dims)
     Layout(all.map(_.name).zip(offs).toMap, offs.last)
 
@@ -52,9 +59,11 @@ object Compile:
   /** the gap between a match and a mismatch of a plain lookup */
   val Lambda = 256f
 
-  def apply(p: Program): Weights =
+  def apply(p: Program): Weights = apply(p, Layout.of(p))
+
+  /** the program on a given layout (`Layout.of`'s, or `Liveness`'s with the program it made) */
+  def apply(p: Program, lay: Layout): Weights =
     p.checked
-    val lay = Layout.of(p)
     val d = lay.dims
     def square() = Array.fill(d, d)(0f)
     def head(h: Head): HeadW =
@@ -81,15 +90,15 @@ object Compile:
               qk(lay.dim(qc, v))(Layout.Start) += lambda
         case (qm: Many, kc: Cat) =>
           // membership: the key's one-hot against the query's set — λ when the key's value is in it, 0 when not
-          for v <- qm.values do qk(lay.at(qm) + qm.values.indexOf(v))(lay.dim(kc, v)) = lambda
+          for v <- qm.values do qk(lay.ix(qm, qm.values.indexOf(v)))(lay.dim(kc, v)) = lambda
           top += lambda
         case (qb: Bits, kb: Bits) =>
-          for b <- 0 until qb.bits do qk(lay.at(qb) + b)(lay.at(kb) + b) = lambda / 2
+          for b <- 0 until qb.bits do qk(lay.ix(qb, b))(lay.ix(kb, b)) = lambda / 2
           val pairTop = lambda / 2 * qb.bits
           top += pairTop
           if h.wild then
             // as for a Cat: a none query (presence 0) scores the pair's top against every position but the start
-            val present = lay.at(qb) + qb.present
+            val present = lay.ix(qb, qb.present)
             qk(Layout.One)(Layout.One) += pairTop
             qk(Layout.One)(Layout.Start) -= pairTop
             qk(present)(Layout.One) -= pairTop
@@ -102,23 +111,32 @@ object Compile:
           if h.latest then qk(Layout.One)(Layout.PosNum) = Eps
           for (dst, src) <- h.copy do
             val into = if h.all then Layout.raw(dst) else dst
-            for i <- 0 until dst.dims do ov(lay.at(into) + i)(lay.at(src) + i) = 1f
+            for i <- 0 until dst.dims do ov(lay.ix(into, i))(lay.ix(src, i)) = 1f
         case c: Cover =>
           // λ per member of j's set covered by i's, −λ per member of j's (so −λ per member uncovered), λ·slack;
           // −λ(slack + 1) per member shared where the sets must be apart: a candidate scores
           // top + λ(slack − uncovered) ≥ top, the start top − λ/2, the rest ≤ top − λ
           for (q, k) <- c.covered; v <- 0 until k.dims do
-            qk(lay.at(q) + v)(lay.at(k) + v) += Lambda
-            qk(Layout.One)(lay.at(k) + v) -= Lambda
-          for (q, k) <- c.apart; v <- 0 until k.dims do qk(lay.at(q) + v)(lay.at(k) + v) -= Lambda * (c.slack + 1)
+            qk(lay.ix(q, v))(lay.ix(k, v)) += Lambda
+            qk(Layout.One)(lay.ix(k, v)) -= Lambda
+          for (q, k) <- c.apart; v <- 0 until k.dims do qk(lay.ix(q, v))(lay.ix(k, v)) -= Lambda * (c.slack + 1)
           qk(Layout.One)(Layout.One) += Lambda * c.slack
           qk(Layout.One)(Layout.Start) += top - Lambda / 2 - Lambda * c.slack
           for (dst, src) <- c.copy do
-            for i <- 0 until dst.dims do ov(lay.at(Layout.raw(dst)) + i)(lay.at(src) + i) = 1f
+            for i <- 0 until dst.dims do ov(lay.ix(Layout.raw(dst), i))(lay.ix(src, i)) = 1f
         case c: Count =>
           // the start scores as a match: 1/(c+1) of the attention on it, read into the share
           qk(Layout.One)(Layout.Start) += top
           ov(lay.at(Layout.share(c.dst)))(Layout.Start) = 1f
+        case c: Clear =>
+          // itself alone: the latest position a causal program sees; else its own position's bits (a mismatch a
+          // whole λ below), the start — which has no position — by its own dim. Minus what the fields hold
+          if p.causal then qk(Layout.One)(Layout.PosNum) = Eps
+          else
+            val pos = p.inputs.collectFirst { case b: Bits if b.name == "pos" => b }.get
+            for b <- 0 until pos.bits do qk(lay.ix(pos, b))(lay.ix(pos, b)) = Lambda / 2
+            qk(Layout.Start)(Layout.Start) = Lambda
+          for f <- c.fields; i <- 0 until f.dims do ov(lay.ix(f, i))(lay.ix(f, i)) = -1f
       HeadW(qk, ov)
     def mlp(l: Layer): MlpW =
       // a neuron: its input weights, and its output dims with their weights
@@ -132,10 +150,10 @@ object Compile:
           case Guard.IsNot(f, v) => row(lay.dim(f, v)) -= 1
           case Guard.On(f) => row(lay.at(f)) += 1; positive += 1
           case Guard.Off(f) => row(lay.at(f)) -= 1
-          case Guard.In(f, v) => row(lay.at(f) + f.values.indexOf(v)) += 1; positive += 1
-          case Guard.NotIn(f, v) => row(lay.at(f) + f.values.indexOf(v)) -= 1
-          case Guard.Has(f) => row(lay.at(f) + f.present) += 1; positive += 1
-          case Guard.Lacks(f) => row(lay.at(f) + f.present) -= 1
+          case Guard.In(f, v) => row(lay.ix(f, f.values.indexOf(v))) += 1; positive += 1
+          case Guard.NotIn(f, v) => row(lay.ix(f, f.values.indexOf(v))) -= 1
+          case Guard.Has(f) => row(lay.ix(f, f.present)) += 1; positive += 1
+          case Guard.Lacks(f) => row(lay.ix(f, f.present)) -= 1
         }
         (row, positive)
       // AND of the guards (and of `also`, a 0/1 dim), never at the start: 1 when all hold, else ≤ 0
@@ -160,34 +178,34 @@ object Compile:
             up(Layout.One) -= 2f * n
             up(Layout.Start) -= 2f
             val down = up.clone()
-            up(lay.at(src) + b) += 1
-            down(lay.at(src) + b) -= 1
-            neurons += ((up, Seq(lay.at(dst) + b -> 1f)))
-            neurons += ((down, Seq(lay.at(dst) + b -> -1f)))
-          neurons += ((and(r.guards, Some(lay.at(src) + src.present)), Seq(lay.at(dst) + dst.present -> 1f)))
+            up(lay.ix(src, b)) += 1
+            down(lay.ix(src, b)) -= 1
+            neurons += ((up, Seq(lay.ix(dst, b) -> 1f)))
+            neurons += ((down, Seq(lay.ix(dst, b) -> -1f)))
+          neurons += ((and(r.guards, Some(lay.ix(src, src.present))), Seq(lay.ix(dst, dst.present) -> 1f)))
         case Write.Copy(_, _) => sys.error("checked: copies of Cats or Bits")
         case Write.Union(dst, srcs) =>
           // per value: min(1, Σ sources) = ReLU(x) − ReLU(x − 1), x the sum of the sources' 0/1 dims
           for i <- dst.values.indices do
             val a = Array.fill(d)(0f)
-            for s <- srcs do a(lay.at(s) + i) += 1f
+            for s <- srcs do a(lay.ix(s, i)) += 1f
             val b = a.clone()
             b(Layout.One) -= 1f
-            neurons += ((a, Seq(lay.at(dst) + i -> 1f)))
-            neurons += ((b, Seq(lay.at(dst) + i -> -1f)))
+            neurons += ((a, Seq(lay.ix(dst, i) -> 1f)))
+            neurons += ((b, Seq(lay.ix(dst, i) -> -1f)))
       // the ladder of a gathering head: min(1, L·x) = ReLU(L·x) − ReLU(L·x − 1), any share ≥ 1/maxLen a 1
       val steep = 2f * p.maxLen
       val gathering = l.heads.collect { case h: Lookup if h.all => h.copy.map(_._1); case c: Cover => c.copy.map(_._1) }
         .flatten
       for dst <- gathering; i <- 0 until dst.dims do
-        val from = lay.at(Layout.raw(dst)) + i
+        val from = lay.ix(Layout.raw(dst), i)
         val a = Array.fill(d)(0f)
         a(from) = steep
         val b = Array.fill(d)(0f)
         b(from) = steep
         b(Layout.One) = -1f
-        neurons += ((a, Seq(lay.at(dst) + i -> 1f)))
-        neurons += ((b, Seq(lay.at(dst) + i -> -1f)))
+        neurons += ((a, Seq(lay.ix(dst, i) -> 1f)))
+        neurons += ((b, Seq(lay.ix(dst, i) -> -1f)))
       // the ladder of a counting head: the share x = 1/(c+1); G_n = [c ≥ n] = clamp(S·(tₙ − x), 0, 1), tₙ = 1/(n + ½)
       // (S·(tₙ − x) ≥ 1 when c ≥ n, ≤ 0 when c < n); the count's one-hot "n" = G_n − G_{n+1}, "0" = 1 − G₁
       for c <- l.heads.collect { case c: Count => c } do
@@ -231,10 +249,10 @@ object Forward:
       for f <- p.inputs do (f, r(f.name)) match
         case (c: Cat, Val.C(Some(v))) => x(lay.dim(c, v)) = 1f
         case (b: Bits, Val.B(Some(n))) =>
-          for k <- 0 until b.bits do x(lay.at(b) + k) = if (n >> k & 1) == 1 then 1f else -1f
-          x(lay.at(b) + b.present) = 1f
+          for k <- 0 until b.bits do x(lay.ix(b, k)) = if (n >> k & 1) == 1 then 1f else -1f
+          x(lay.ix(b, b.present)) = 1f
         case (fl: Flag, Val.F(true)) => x(lay.at(fl)) = 1f
-        case (m: Many, Val.M(vs)) => vs.foreach(v => x(lay.at(m) + m.values.indexOf(v)) = 1f)
+        case (m: Many, Val.M(vs)) => vs.foreach(v => x(lay.ix(m, m.values.indexOf(v))) = 1f)
         case _ => ()
       x
     }).toArray
@@ -304,7 +322,7 @@ object Forward:
 
   /** a field read from a residual vector — exact or `Inexact` */
   def decode(lay: Layout, f: Field, x: Array[Float]): Val =
-    val xs = x.slice(lay.at(f), lay.at(f) + f.dims)
+    val xs = Array.tabulate(f.dims)(i => x(lay.ix(f, i)))
     f match
       case c: Cat =>
         if !xs.forall(v => near(v, 0) || near(v, 1)) || xs.count(near(_, 1)) > 1 then
@@ -328,4 +346,4 @@ object Forward:
   /** the program's weights run on inputs: every position's record, decoded (the start not among them) */
   def run(p: Program, w: Weights, inputs: Vector[Record]): Vector[Record] =
     val xs = layers(w, embed(p, w, inputs))
-    xs.drop(1).map(x => p.fields.map(f => f.name -> decode(w.layout, f, x)).toMap).toVector
+    xs.drop(1).map(x => p.outputs.map(f => f.name -> decode(w.layout, f, x)).toMap).toVector

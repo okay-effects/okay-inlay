@@ -16,6 +16,9 @@ class OrdersCountSuite extends munit.FunSuite:
     val in = statuses.map(s => Map("status" -> Val.C(Some(s)))) :+ Map("ask" -> Val.C(Some("unpaid")))
     val ref = Interpret.run(p, in).last("count")
     val got = Forward.run(p, w, in).last("count")
+    val packing = Packing(p, Seq(count))
+    println(packing.row("Count cap 64 (orders)"))
+    packing.law(in, Interpret.run(p, in))
     println(s"rows ${statuses.size}, unpaid ${statuses.count(_ == "unpaid")}; the reference $ref, the weights $got; " +
       s"residual ${w.layout.dims} dims, ${w.layers.size} layer, ${w.params} parameters")
     assertEquals(ref, Val.C(Some("14")))

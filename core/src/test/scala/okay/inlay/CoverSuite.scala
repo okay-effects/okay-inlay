@@ -15,6 +15,8 @@ class CoverSuite extends munit.FunSuite:
   test("the law on random clauses and assignments; the meaning"):
     assert(p.problems.isEmpty, p.problems.mkString("; "))
     val w = Compile(p)
+    val packing = Packing(p, Seq(conf, upos, uneg))
+    println(packing.row("Cover (conflict, units)"))
     val rnd = new scala.util.Random(9)
     var conflicts = 0; var units = 0
     for _ <- 1 to 300 do
@@ -31,6 +33,7 @@ class CoverSuite extends munit.FunSuite:
           fset.name -> Val.M(assign.collect { case (v, false) => v }.toSet), ask.name -> Val.C(Some("clause")))
       val ref = Interpret.run(p, in).last
       assertEquals(Forward.run(p, w, in).last, ref)
+      packing.law(in, Interpret.run(p, in))
       // the meaning, directly
       def value(v: String, s: Boolean) = assign.get(v).map(_ == s)
       val falsified = clauses.exists(_.forall((v, s) => value(v, s).contains(false)))

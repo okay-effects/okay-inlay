@@ -6,6 +6,7 @@ package okay.inlay
 class RegistersSuite extends munit.FunSuite:
   val m = Registers.Program()
   lazy val w = Compile(m.step)
+  lazy val packing = Packing(m.step, m.machine.carry.map(_._1))
 
   for (name, p, f) <- Seq(("A+B", Registers.add, (a: Int, b: Int) => a + b),
       ("A+2B", Registers.add2, (a: Int, b: Int) => a + 2 * b)) do
@@ -16,5 +17,9 @@ class RegistersSuite extends munit.FunSuite:
         val (wa, wb, wSteps, got) = m.run(p, a, b, Machine.weights(m.step, w))
         assertEquals(got.trace, ref.trace, s"($a, $b)")
         assertEquals((wa, wb, wSteps), Registers.interpret(p, a, b), s"($a, $b)")
+        val (pa, pb, pSteps, packed) = m.run(p, a, b, packing.runner)
+        assertEquals((pa, pb, pSteps), (wa, wb, wSteps), s"($a, $b)")
+        packing.traces(m.run(p, a, b, packing.reference)._4.trace, packed.trace, ref.trace)
       println(s"$name: ${inputs.size} inputs, one step program (${w.layers.map(_.mlp.w1.length).sum} neurons, " +
         s"${w.layers.map(_.heads.size).sum} head, residual ${w.layout.dims}): all equal to the interpreter")
+      println(packing.row("Registers"))

@@ -20,6 +20,8 @@ class QuoteSuite extends munit.FunSuite:
       val vocab = Vector("a", "b", "c", "[", "]")
       val p = Quotes.cheap(vocab, k, 64)
       val w = Compile(p)
+      val packing = Packing(p, p.fields.filter(f => f.name == "inside" || f.name == "allowed"))
+      println(packing.row(s"Quotes.cheap k = $k"))
       println(s"cheap k = $k: ${p.layers.size} layers, ${p.layers.map(_.heads.size).sum} heads " +
         s"(the first form: ${Quotes.window(vocab, k, 64).layers.map(_.heads.size).sum}), ${w.layout.dims} dims, " +
         s"${w.layers.map(_.mlp.w1.length).sum} neurons")
@@ -30,6 +32,7 @@ class QuoteSuite extends munit.FunSuite:
           Map[String, Val]("tok" -> c(t)) ++ (if s then Map("src" -> c("y")) else Map.empty))
         val ref = Interpret.run(p, in)
         assertEquals(Forward.run(p, w, in), ref, s"weights against the reference on $toks")
+        packing.law(in, ref)
         val got = ref.map { rec =>
           val in = rec("inside") == Val.F(true)
           (in, if in then rec("allowed") match
@@ -47,6 +50,8 @@ class QuoteSuite extends munit.FunSuite:
       val vocab = Vector("a", "b", "c", "[", "]")
       val p = Quotes.window(vocab, k, 48)
       val w = Compile(p)
+      val packing = Packing(p, p.fields.filter(f => f.name == "inside" || f.name == "allowed"))
+      println(packing.row(s"Quotes.window k = $k"))
       println(s"k = $k: ${p.layers.size} layers, ${p.layers.map(_.heads.size).sum} heads, ${w.layout.dims} dims, " +
         s"${w.layers.map(_.mlp.w1.length).sum} neurons")
       var (steps, narrowed) = (0, 0)
@@ -56,6 +61,7 @@ class QuoteSuite extends munit.FunSuite:
           Map[String, Val]("tok" -> c(t)) ++ (if s then Map("src" -> c("y")) else Map.empty))
         val ref = Interpret.run(p, in)
         assertEquals(Forward.run(p, w, in), ref, s"weights against the reference on $toks")
+        packing.law(in, ref)
         val got = ref.map { rec =>
           val inside = rec("inside") == Val.F(true)
           (inside, if inside then rec("allowed") match

@@ -10,6 +10,8 @@ class BitsQuoteSuite extends munit.FunSuite:
       val vocab = words ++ Vector("[", "]")
       val p = Quotes.cheapBits(vocab, k, 64)
       val w = Compile(p)
+      val packing = Packing(p, p.fields.filter(f => f.name == "inside" || f.name == "allowed"))
+      println(packing.row(s"Quotes.cheapBits vocab $size, k = $k"))
       println(s"vocab $size, k = $k: ${p.layers.map(_.heads.size).sum} heads, ${w.layout.dims} dims")
       // few distinct words, so windows repeat: a source made of a small alphabet's runs
       val alphabet = r.shuffle(words).take(4)
@@ -22,6 +24,7 @@ class BitsQuoteSuite extends munit.FunSuite:
         val in = Quotes.bitsInputs(vocab, toks, src)
         val ref = Interpret.run(p, in)
         val fw = Forward.run(p, w, in)
+        packing.law(in, ref)
         for i <- fw.indices; f <- p.fields.map(_.name) if fw(i)(f) != ref(i)(f) do
           fail(s"position ${i + 1} field $f: weights ${fw(i)(f)} reference ${ref(i)(f)} on ${toks.take(i + 1)}")
         val got = ref.map(rec => (rec("inside") == Val.F(true), rec("allowed")))
