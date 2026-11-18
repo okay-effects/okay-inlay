@@ -77,3 +77,78 @@ engines (`Exact`, `Logic`) and the phrases unchanged; the slots are the space's 
 table, link, two conditions with copied values, group, aggregate and its column, order and direction, limit, a copied
 node and the closure's direction). `TablesDomainSuite`: parts and assemble inverse on 1,000 drawn points over 40
 schemas; the kit's pairs answered by the engines with rows. okay-inlay 0.1.0 republished locally with the package.
+
+## 7. On okay-frames (2026-11-17; branch `frames`, not merged — the operator decides)
+
+okay-frames 0.1.0 (`~/work/my/okay-frames`, specs/frames.md) is the shared interface of "a meaning read by
+choices": a `Space[D, T]` (the next hole with finite options, assemble, path, say, parse; `close` derived), `Laws`,
+a `Reading` as a value driven by its host, a `Measure`. `Domain` / `Kit` is an older writing of the same idea with
+flat slots. On this branch every `Domain` is a `Space` and the kit reads through okay-frames' `Reading`.
+
+**A decision that is the operator's: this is the core library's FIRST dependency.** The README says the core has
+no dependencies; with this branch `okay-inlay` (JVM and Scala.js) depends on `okay-frames` (pure, no dependency of
+its own; resolver `https://okay-effects.github.io/okay-frames/maven`, set for the whole build since every module
+depends on `core`). The README is left as it is; merging this branch means changing that sentence, not merging
+keeps it true.
+
+**What was built.** `Domain` itself is unchanged; so are `Slot`, `Pair`, `Units`, and the signatures and results of
+`Kit.pairs` / `read` / `measure`, so okay-desk's and the benches' code compiles as it was.
+
+- `SlotSpace` (`Kit.space(d)(copier)`): the adapter. Slots are independent, so `next` asks them in
+  `slots(schema)` order whatever was chosen. A closed slot offers its choices and `"-"` (the kit's convention for a
+  slot the point does not use). A copied slot offers what the domain's `Copier` reads from the text, and `"-"`.
+  `assemble` is the domain's, accepted by the exact engine (`run` is right) — what `Kit.read` always required of a
+  point. `path` is `parts` in the slots' order, `"-"` where a slot is absent.
+- Canonical words. `Domain.say` words a point in many ways for TRAINING pairs; it has no inverse and is not
+  touched. The space's `say` is the honest plain form of `parts` — `kind=shift; shift_unit=month; direction=after;
+  date1=2026-01-31; n=3`, used slots in the slots' order, the same in every language (`\`, `;`, `=` escaped by a
+  backslash) — and `parse` its exact inverse: words that are not exactly some point's saying parse to nothing.
+  A domain with real canonical words (okay-shop's commands) writes its own `Space` instead.
+- `Kit.weigher(d)(reader)`: a `Reader` as the function a `Reading` is weighed by; `Kit.reading` =
+  `Reading.run(space)(schema, question)(weigher)`; `Kit.read` says that reading in the kit's older record
+  (`parts`, `margins`, `abstained`, `point`); `Kit.measure` is as it was, over `read`; `Kit.framed` is
+  okay-frames' own `Measure.of` on the same space, reader and pairs.
+
+**Where the brief's plan did not hold, and what was done instead.**
+
+1. *A copied slot is not one forced option.* The plan: a copied slot's options are the one value the copier reads,
+   so okay-frames' `forced` applies. But `Units.copier` reads the first number for both `quantity` and `n`, so for
+   "How many minutes are in 3 hours?" the hole `n` would offer only `3` while the point's path says `n` is unused —
+   `Laws.reach` fails on every `Convert` and `Shift`. Not using what the text writes is a real choice; so a copied
+   slot offers the copied value and `"-"`, and the kit's weigher takes the copied value with no rival (an infinite
+   margin, as `Kit.read` always gave it). A copied slot the text does not write offers only `"-"` — that one is
+   forced. Behaviour of `Kit.read` is the same either way; `reach` holds only this way.
+2. *`Kit.Measure` is not okay-frames' `Measure`.* Two counts differ, so the kit keeps its own record and
+   `Kit.framed` gives the other:
+   - by hole, okay-frames counts a hole only while the reading is still on the meant path (right for holes that
+     depend on each other) and counts unused holes too; the kit counts every slot the meant point uses,
+     independently. Keywords, 300 pairs: the kit `from 162/174`, okay-frames `from 252/300`; `quantity 174/174`
+     against `0/25` (the copier's over-reading above, ending the path).
+   - okay-frames asks about ANY choice under the bar, a doubtful `"-"` among them; the kit abstains only on slots
+     the reading uses. The graded reader at bar 0.2: the kit abstained 247, okay-frames asked 267.
+   The totals agree where these rules do not bite (keywords at every bar, any reader at bar 0): right = whole,
+   unread, wrong equal — asserted in `SlotSpaceSuite`.
+
+**Differences from the old `Kit.read` that remain** (none seen by any suite; all in degenerate inputs):
+- a reader's score for a name that is not one of the slot's choices (nor `"-"`) is ignored — nothing outside the
+  options can be chosen; the old kit would take such a name as the slot's value;
+- a tie between the best two is broken by the slot's order of choices (okay-frames), not by the reader's map order;
+- a reader naming ONE choice with a score ≤ 0: the old kit took it with that margin; now an unnamed choice (scored
+  0, as the old comparison with 0) is not below it. Scores are probabilities by `Reader`'s contract;
+- `next` calls `slots(schema)` once a hole and `close` walks the holes again: about twice the slots' count of
+  calls a question where the old kit made one. Nothing measured slower; a domain with costly `slots` should cache.
+
+**Measured** (`sbt coreJVM/test`, `sbt coreJS/test`, 2026-11-17):
+- `KitNumbersSuite`: `Kit.measure` (every count, by slot) and every `Kit.read` (parts, margins to 1e-6, abstained,
+  point — as one hash) on 300 pairs of seed 11, for the keyword reader and a graded reader (scores for every
+  choice and `"-"`, some empty readings), at margins 0, 0.2, 0.5 — equal to the numbers captured on `master`
+  f7983a9 with the same suite before the rewrite, on the JVM and on Scala.js. Keywords: whole 264, unread 36,
+  wrong 0 at every margin. Graded: whole 169 / unread 128 / wrong 3 at 0; whole 30 / abstained 247 / unread 23 at
+  0.2; whole 1 / abstained 299 at 0.5.
+- `SlotSpaceSuite`: `Laws.reach` on 500 drawn points each for its own question (en, ru); `Laws.roundTrip` on 500
+  drawn and all 886 enumerated points, `Laws.distinct` on the 886; a domain whose copied text holds the words' own
+  marks round-trips; okay-frames' measure against the kit's as above.
+- `UnitsSuite` unchanged and green. `DomainBench` (mlx) compiles; not run (it needs MLX and the GPU was busy).
+
+Not done: okay-desk's domains (`TablesDomain`, `Code`, `PuzzleDomain`) were not compiled against this branch (they
+take okay-inlay from a local publish; nothing was published).

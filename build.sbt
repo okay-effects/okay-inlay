@@ -4,13 +4,17 @@ ThisBuild / organization := "io.github.okay-effects"
 ThisBuild / version := "0.1.0"
 ThisBuild / scalaVersion := "3.3.8"
 ThisBuild / scalacOptions ++= Seq("-deprecation", "-feature", "-Wunused:all", "-Werror")
+/** okay-frames (a meaning read by choices): what `okay.inlay.domain` reads with — specs/domains.md "On okay-frames" */
+ThisBuild / resolvers += "okay-frames" at "https://okay-effects.github.io/okay-frames/maven"
 
 import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
 
 /** the DSL, the reference, the compiler and the CPU forward pass: plain Scala, so the JVM and the browser (Scala.js)
  * run one code — the browser handler of specs/bridge.md §11 */
 lazy val core = crossProject(JVMPlatform, JSPlatform).crossType(CrossType.Pure).in(file("core"))
-  .settings(name := "okay-inlay", libraryDependencies += "org.scalameta" %%% "munit" % "1.2.3" % Test)
+  .settings(name := "okay-inlay",
+    libraryDependencies ++= Seq("io.github.okay-effects" %%% "okay-frames" % "0.1.0",
+      "org.scalameta" %%% "munit" % "1.2.3" % Test))
 
 lazy val root = (project in file(".")).aggregate(core.jvm, core.js, bridge.jvm, bridge.js, mcp, mlx, forge).settings(publish / skip := true)
 

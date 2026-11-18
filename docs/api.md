@@ -190,6 +190,10 @@ language)`.
 `pairs(d)(schema, n, seed, languages)`, `read(d)(schema, question, reader, copier, margin)` (a slot below the margin
 abstains), `measure(d)(...)`: `Measure(n, bySlot, whole, abstained, unread, wrongAnswered)`.
 
+On okay-frames (branch `frames`, specs/domains.md §7): `Kit.space(d)(copier): okay.frames.Space[d.Schema, d.Point]`
+(`SlotSpace`: the slots in order, canonical words `slot=value; …`), `Kit.weigher(d)(reader)`,
+`Kit.reading(d)(schema, question, reader, copier): okay.frames.Reading`, `Kit.framed(d)(...)`: `okay.frames.Measure`.
+
 `object Units extends Domain` — unit conversion and calendar arithmetic (`Convert`, `Shift`, `Between`), 16 units
 in 4 dimensions with Russian forms, an exact proleptic Gregorian calendar; 886 points in its space. okay-desk's
 `TablesDomain` is the second domain.
