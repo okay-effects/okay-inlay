@@ -1,0 +1,88 @@
+// A small inventory ledger: items come in, go out, and the stock is checked against the books.
+
+final case class Item(code: String, name: String, unit: String)
+
+enum Movement:
+  case Received(item: String, quantity: Int, day: Int)
+  case Shipped(item: String, quantity: Int, day: Int)
+  case Counted(item: String, quantity: Int, day: Int)
+
+final case class Ledger(items: Map[String, Item], movements: Vector[Movement]):
+  import Movement.*
+
+  def add(m: Movement): Either[String, Ledger] =
+    val code = m match
+      case Received(i, _, _) => i
+      case Shipped(i, _, _) => i
+      case Counted(i, _, _) => i
+    if !items.contains(code) then Left(s"unknown item: $code")
+    else m match
+      case Shipped(i, q, d) if stock(i, d) < q => Left(s"not enough $i on day $d: ${stock(i, d)} < $q")
+      case _ => Right(copy(movements = movements :+ m))
+
+  /** what the books say is on the shelf at the end of `day` */
+  def stock(item: String, day: Int): Int =
+    movements.foldLeft(0) {
+      case (n, Received(`item`, q, d)) if d <= day => n + q
+      case (n, Shipped(`item`, q, d)) if d <= day => n - q
+      case (n, _) => n
+    }
+
+  /** counts that disagree with the books: item, day, counted, expected */
+  def discrepancies: Vector[(String, Int, Int, Int)] =
+    movements.collect { case Counted(i, q, d) if stock(i, d) != q => (i, d, q, stock(i, d)) }
+
+  def report(day: Int): String =
+    val lines = items.values.toVector.sortBy(_.code).map { it =>
+      val n = stock(it.code, day)
+      f"${it.code}%-8s ${it.name}%-24s $n%6d ${it.unit}"
+    }
+    (s"stock on day $day" +: lines).mkString("\n")
+
+object Ledger:
+  val empty: Ledger = Ledger(Map.empty, Vector.empty)
+
+  def of(items: Item*): Ledger = Ledger(items.map(i => i.code -> i).toMap, Vector.empty)
+
+  /** every movement applied in order; the first one refused stops the run */
+  def replay(start: Ledger, ms: Seq[Movement]): Either[String, Ledger] =
+    ms.foldLeft[Either[String, Ledger]](Right(start))((acc, m) => acc.flatMap(_.add(m)))
+
+@main def demo(): Unit =
+  import Movement.*
+  val start = Ledger.of(
+    Item("NAIL-40", "nails, 40 mm", "box"),
+    Item("ROPE-08", "rope, 8 mm", "m"),
+    Item("OIL-1L", "machine oil", "bottle"))
+  val week = Seq(
+    Received("NAIL-40", 120, 1),
+    Received("ROPE-08", 300, 1),
+    Shipped("NAIL-40", 35, 2),
+    Received("OIL-1L", 24, 3),
+    Shipped("ROPE-08", 110, 3),
+    Counted("NAIL-40", 85, 4),
+    Shipped("OIL-1L", 6, 5),
+    Counted("ROPE-08", 185, 5),
+    Shipped("NAIL-40", 90, 6))
+  Ledger.replay(start, week) match
+    case Left(why) =>
+      println(s"refused: $why")
+      // the same week without the shipment that could not be made
+      Ledger.replay(start, week.init).foreach { l =>
+        println(l.report(6))
+        for (i, d, counted, expected) <- l.discrepancies do
+          println(s"day $d: $i counted $counted, the books say $expected")
+      }
+    case Right(l) => println(l.report(6))
+
+def sql(l: Ledger): String =
+  val rows = l.movements.map {
+    case Movement.Received(i, q, d) => s"('$i', $q, $d, 'in')"
+    case Movement.Shipped(i, q, d) => s"('$i', $q, $d, 'out')"
+    case Movement.Counted(i, q, d) => s"('$i', $q, $d, 'count')"
+  }
+  s"""CREATE TABLE movement (item TEXT NOT NULL, quantity INTEGER NOT NULL, day INTEGER NOT NULL, kind TEXT NOT NULL);
+     |INSERT INTO movement (item, quantity, day, kind) VALUES
+     |  ${rows.mkString(",\n  ")};
+     |SELECT item, SUM(CASE kind WHEN 'in' THEN quantity WHEN 'out' THEN -quantity ELSE 0 END) AS stock
+     |FROM movement GROUP BY item ORDER BY item;""".stripMargin
