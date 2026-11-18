@@ -8,7 +8,8 @@ import okay.inlay.{Forward, Interpret, Program, Weights}
  * THE WEIGHTS ON MLX: the same layers as `Forward`, as matrices on Apple's GPU — per head the scores `X qk Xᵀ` under
  * the causal mask, softmax (float32), `A (X ovᵀ)`; the MLP `ReLU(X w1ᵀ) w2ᵀ`. The matrices put on the GPU once
  * (`OnMlx(w)`), run on as many inputs as asked; `close` frees them. The law: decoded, what `Forward` and the
- * reference give.
+ * reference give. A layout by liveness (`Layout.scattered`) and its `Clear` heads are matrices like any other; a
+ * program with clears is decoded on the fields it ends with (`Program.outputs`: all of them when nothing is cleared).
  */
 final class OnMlx(val w: Weights, dtype: Dtype = Dtype.Float32):
   _root_.mlx.Mlx.init()
@@ -24,7 +25,12 @@ final class OnMlx(val w: Weights, dtype: Dtype = Dtype.Float32):
   }
 
   /** the layers over the embedded positions (the start first): the residual, row by row */
-  def run(x0: Array[Array[Float]]): Array[Array[Float]] =
+  def run(x0: Array[Array[Float]]): Array[Array[Float]] = tapped(x0, Set.empty)._1
+
+  /** `run`, and for each layer of `taps` the residual as the layer found it and as its heads left it, before its
+   * MLP — what a `Clear` head leaves of the coordinates it frees */
+  def tapped(x0: Array[Array[Float]], taps: Set[Int])
+      : (Array[Array[Float]], Map[Int, (Array[Array[Float]], Array[Array[Float]])]) =
     val s = new Scope
     given Scope = s
     try
@@ -35,27 +41,30 @@ final class OnMlx(val w: Weights, dtype: Dtype = Dtype.Float32):
         else 0f), n, n), dtype)
       val zero = astype(scalar(0f), dtype)
       var x = astype(floats(x0.flatten, n, d), dtype)
-      for (heads, mlp) <- layers do
+      val seen = Map.newBuilder[Int, (Array[Array[Float]], Array[Array[Float]])]
+      for ((heads, mlp), layer) <- layers.zipWithIndex do
+        val found = x
         var heard = zeros(Seq(n, d), dtype)
         for (qk, ovT) <- heads do
           val a = softmax(add(matmul(matmul(x, qk), transpose(x, 1, 0)), mask), 1)
           heard = add(heard, matmul(a, matmul(x, ovT)))
         x = add(x, heard)
+        if taps(layer) then seen += layer -> (found.toFloats.grouped(d).toArray, x.toFloats.grouped(d).toArray)
         for (w1T, w2T) <- mlp do
           val pre = matmul(x, w1T)
           x = add(x, matmul(where(greater(pre, zero), pre, zero), w2T))
-      x.toFloats.grouped(d).toArray
+      (x.toFloats.grouped(d).toArray, seen.result())
     finally s.close()
 
   /** the program's weights run: every position's record, decoded (the start not among them) */
   def records(p: Program, inputs: Vector[Interpret.Record]): Vector[Interpret.Record] =
     val xs = run(Forward.embed(p, w, inputs))
-    xs.drop(1).map(x => p.fields.map(f => f.name -> Forward.decode(w.layout, f, x)).toMap).toVector
+    xs.drop(1).map(x => p.outputs.map(f => f.name -> Forward.decode(w.layout, f, x)).toMap).toVector
 
   /** the last position's record alone */
   def last(p: Program, inputs: Vector[Interpret.Record]): Interpret.Record =
     val x = run(Forward.embed(p, w, inputs)).last
-    p.fields.map(f => f.name -> Forward.decode(w.layout, f, x)).toMap
+    p.outputs.map(f => f.name -> Forward.decode(w.layout, f, x)).toMap
 
   def close(): Unit = kept.close()
 
