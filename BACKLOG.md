@@ -132,6 +132,9 @@ compiler ALTA exists and is unread. Ideas 3–7 below are NOT checked against th
 7. **Codes, a superoptimiser** (weaker): fields on code words of a known minimum distance instead of random
    directions (the interference bounded by construction); a learned compression as the candidate with an
    exhaustive check over a finite domain as the judge.
+9. **The deep state fed back** (operator, 2026-11-19; PLAN specs/feedback.md, nothing run): a machine's carry as a
+   matrix inside the pass instead of the host's decode and embed (does error accumulate; what it saves; on MLX and
+   in the page), recirculation on Qwen3 untrained, an adaptive one as a reader. From arXiv 2608.08888, 2608.17981.
 8. **Training through the exact part needs a soft λ**: a hard attention (λ = 256) has almost no gradient, so the
    block is differentiable in form only. Soften λ while training, restore it, re-check the law. Possibly what
    bridge-2 lacks — unchecked.
