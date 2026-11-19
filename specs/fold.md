@@ -83,7 +83,7 @@ prose, code — tokenised raw (no chat template), each one sequence, at most 1,0
 A few thousand tokens: enough for per-layer means over tokens, small for a perplexity (read its ratios, not its
 third digit).
 
-## 5. The run — not done yet
+## 5. The run (done 2026-11-19, §6)
 
 The models on this machine (HuggingFace cache, `~/.cache/huggingface/hub`), all three sizes, **4-bit only** (affine,
 group 64; no full-precision Qwen3 file is here, none was downloaded):
@@ -116,8 +116,48 @@ The run fails (exit 1, the tables still written) if the float32 pass's mean NLL 
 
 ## 6. Results
 
-None yet. Per model: the per-pair table (cosW, D/W, q-noise, left 16/64/256, cosU, NMSE drop / rank 0 / 16 / 32 /
-64 / 256, relU 64), the per-map table (adjacent against apart), the updates' cosines, the folded model's perplexity.
+Run 2026-11-19, 06:02–06:16, the three 4-bit files, one after another under the lock. The .tsv files and every
+table (per pair, per map, the updates' cosines, the folded model's perplexity) are in `bench/fold/results/`
+(`tables.md` is `Tables.scala`'s output). Each run ended with exit 1 on one check only: the SVD's shares at 12
+rounds differ from those at 4 by 0.0077, 0.0090 and 0.0087, over the 0.005 allowed. So every `left r` below is
+known to about ±0.01; nothing said here rests on less than ten times that. The pass and the bases passed.
+
+**No size folds untrained. The fold at its start is worse than removing the layer, on all three.**
+
+| model | cosW, adjacent | D/W | left 64 (range over pairs) | left 256 | relU 64: min / median / max | r 32 beats drop |
+| --- | --- | --- | --- | --- | --- | --- |
+| 0.6B, 28 layers | ≤ 0.0025 | 1.90–2.08 | 0.75–0.80 | 0.39–0.47 | 1.91 / 2.51 / 7.32 | 0 of 27 pairs |
+| 1.7B, 28 layers | ≤ 0.0015 | 1.94–2.05 | 0.85–0.89 | 0.61–0.67 | 1.74 / 2.55 / 20.1 | 0 of 27 pairs |
+| 4B, 36 layers | ≤ 0.0040 | 1.77–2.39 | 0.84–0.91 | 0.62–0.74 | 1.01 / 2.29 / 7.87 | 0 of 35 pairs |
+
+- **The weights of adjacent layers are unrelated as matrices.** `cosW` is zero to three places and `D/W` is 2 —
+  what two independent matrices of equal norm give (‖W_b − W_a‖² = ‖W_a‖² + ‖W_b‖²). Adjacent pairs are no closer
+  than pairs half the depth apart (per-map tables: `left r` adjacent and apart differ by 0.01–0.03).
+- **The difference is not low-rank.** Rank 64 keeps 10–25% of ‖D‖², rank 256 keeps 26–61%. Quantisation is not the
+  reason: its expected share of ‖D‖² is 0.8–0.9%.
+- **The updates do not agree either.** The mean cosine of two adjacent layers' updates at a token is 0.05 (0.6B),
+  0.08 (1.7B), 0.03 (4B); the paper reports that this cosine becomes high for tied layers after training.
+- **One pair.** `relU 64` is above 1 for every pair of every model: the folded layer's error is 1.7–20 times the
+  energy of the update it replaces. The output NMSE with the layer dropped is lower than with the fold at rank 32
+  for every pair, and at rank 256 for all but one pair of 4B.
+- **The whole model at N = 2.** Perplexity goes from 17.9 / 11.9 / 9.40 to 10⁵–10⁸ at every rank, with all pairs
+  folded and with the middle pairs only.
+- **By size.** A rank is a larger share of a small matrix, so 0.6B leaves less at equal rank (left 256: 0.39–0.47
+  against 0.62–0.74 for 4B); that is the share of the rank, not redundancy — `relU` is the same on all three.
+
+**The paper's Table 9 is not reproduced.** For 4B at rank 32 on the pairs (6,7)…(20,21) it gives NMSE
+0.008–0.018; here 0.49, 0.57, 0.43, 0.42, 0.75, 0.11, 0.10, 0.12, and the layer dropped gives 0.21, 0.24, 0.19,
+0.17, 0.14, 0.026, 0.042, 0.047. The construction is the paper's as it describes it (read again 2026-11-19: the
+shared weight is the first layer's, the correction the truncated SVD of the difference, the pair's input the
+teacher's hidden state, no fitting). What differs or is unknown: the paper does not say what the variance is
+taken over (here position 0 of each text is left out because its norm would set the variance alone — with it in,
+every NMSE falls by a large factor, and that alone could be the gap; NOT measured), its text, and its weights
+(full precision there, a 4-bit file here). `relU`, which no choice of variance changes, is the number to trust.
+
+**Read by §7.** (a) okay-forge: the weights of 0.6B and 1.7B are not redundant in this way; a folded student
+would be made by the distillation alone (the paper: 22 billion tokens), with nothing to start from, and would
+still cost the teacher's time and memory per token. (b) No "interchangeable middle" is visible before training:
+no stretch of depth has `relU` under 1. Not done: a full-precision control, and the variance with position 0 in.
 
 ## 7. How the numbers will be read (no conclusion before them)
 

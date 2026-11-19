@@ -142,7 +142,8 @@ few kilobytes beside an unchanged base, loaded by the model's own engine; a trai
 (item 8). Not promised: the block INSIDE the model as an ordinary adapter (an adapter changes the model's heads,
 the block needs its own).
 
-18. **Fold: do small Qwen3 models fold into themselves** (operator, 2026-11-18; BUILT, NOT RUN — specs/fold.md) —
+18. **Fold: do small Qwen3 models fold into themselves** (operator, 2026-11-18; RUN 2026-11-19: none folds untrained, the fold is worse than
+    dropping the layer on all three, the paper's Table 9 not reproduced — specs/fold.md §6) —
     the untrained fold of arXiv 2611.18113 (layer b = layer a + a rank-r SVD correction, its own norms) measured on
     Qwen3-0.6B / 1.7B / 4B: weights, residual updates' cosine, each pair folded, the model folded at N = 2. `Fold`,
     `FoldSuite` (green), `FoldBench`; the GPU was never free on 2026-11-18. Next: run it (spec §5's command), fill
