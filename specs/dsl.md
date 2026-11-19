@@ -314,8 +314,9 @@ memory, plain weights and packed together.)
    unless the heads are stored sparsely or the clears are fewer.
 
 **Not done, not verified.**
-- The packed weights were run by `Forward` on the CPU only (JVM and Scala.js). Not on MLX (`OnMlx`: the GPU was
-  busy with another session's training), not in half precision (`HalfSuite`'s question), not beside a model.
+- The packed weights were run by `Forward` on the CPU (JVM and Scala.js) and, since 2026-11-19, on MLX: the law
+  holds in float32 on 14 programs; in the halves `Cek` breaks packed where it held plain, and the packed quotes
+  and `Dpll` give wrong records in bfloat16 ("Liveness on MLX, measured" below). Not beside a model.
   A clear's score is ε·position, the same size as a `latest` lookup's position term — the one that broke float16.
 - Fewer clears were not tried: a clear is placed in the first layer where a field is dead; placing it in the layer
   where its coordinates are first needed and merging would cut heads at no cost in width. A clear by the MLP (two
@@ -323,3 +324,110 @@ memory, plain weights and packed together.)
 - The product with binary codes (BACKLOG "Narrower exact blocks", idea 2) is not measured.
 - Nothing else uses the packed layout yet: `Compile(p)`, the bridge, the web page and the MLX benches are as they
   were.
+
+### Liveness on MLX, measured (2026-11-19, branch `packed-mlx`)
+
+One run on the GPU, 06:19, the six suites together: 37 tests passed, and the plain path is unchanged (`HalfSuite`
+prints stage (c)'s 768 of 880 in float16 and 705 of 832 in bfloat16). Every row is in `bench/packed-mlx/run1.txt`.
+
+**Float32: the law holds packed, on all 14 programs.** The packed weights on MLX decode to the packed reference at
+every position, and every coordinate a clear frees reads exactly 0 (largest magnitude 0.0), from 698 cells checked
+for `Quotes.cheap` to 197,960 for `Closure`. So a packed layout can be used on MLX in float32 as it is.
+
+**The halves: a packed program is not safer, and it fails in a worse way.**
+
+| program | float16: plain → packed (exact of positions) | bfloat16: plain → packed | wrong, packed (f16 / bf16) |
+| --- | --- | --- | --- |
+| `Quotes.window` k = 3 | 678 → 678 of 678 | 613 → 613 | 0 / 0 |
+| `Quotes.cheap` k = 8 | 597 → 597 of 678 | 566 → 573 | 0 / 48 |
+| `Quotes.cheap` k = 32 | 371 → 371 of 678 | 362 → 369 | 59 / 48 |
+| `Quotes.cheapBits` 300 words | 492 → 581 of 588 | 380 → 489 | 2 / 86 |
+| `Closure` 12 names | 659 → 667 of 667 | 659 → 667 | 0 / 0 |
+| `Registers` | 282 → 282 of 282 | 282 → 282 | 0 / 0 |
+| `Cek` 1,024 positions | 2086 → 1206 of 2086 | 2086 → 1578 | 0 / 0 |
+| `OrParallel` | 35 → 127 of 659 | 35 → 35 | 20 / 11 |
+| `Dpll` n = 8 | 34 → 79 of 314 | 34 → 108 | 45 / 72 |
+
+- `Cek` is the one program whose plain form holds in both halves and whose packed form does not: as expected
+  below, the causal clear's score overflows in float16 (the whole 880-position run is lost from its first
+  position, 21,144 cleared cells not 0, NaN among them) and ties in bfloat16 from position 257 on.
+- Where the plain form already broke, the packed one is exact at as many positions or more (a narrower stream
+  loses less), `Closure` holds packed in both halves where plain loses 8 positions — but in bfloat16 the packed
+  quotes and `Dpll` give WRONG records (25–86) where the plain form gave none or few and was "not decodable":
+  a value left under a clear that did not fully fire is read as a value. A refusal became a wrong answer.
+- So the rule of stage (c) stands and is sharper: these programs run in float32; in a half a packed layout must
+  not be trusted without a check of its own.
+
+**Time of a pass** (one run, five rounds, a round's median): `Closure` 1.11–1.18 ms plain against 1.02–1.08 ms
+packed (width 921 → 199, heads 5 → 16: 0.87–0.96 of plain); `Dpll` n = 8 2.83–2.87 ms against 3.33–3.38 ms (width
+772 → 520, heads 7 → 15: 1.18 of plain). At these sizes the heads cost more than the width saves; packing buys
+width (memory, a narrower stream beside a model), not time.
+
+Not done: the default of `Compile(p)` is unchanged and no caller was moved to a packed layout.
+
+### Liveness on MLX (2026-11-18, branch `packed-mlx`): as written before the run
+
+(Kept as the record of what was expected; "has not run" below was true on 2026-11-18.)
+
+The operator's question: the law of a packed layout was checked by `Forward` on the CPU only — check it on the GPU,
+in float32 and in the halves. The check is written and compiled; it has not run. Nothing below is a result on the
+GPU, and no number of this section comes from MLX.
+
+**What `OnMlx` needed (found by reading it; the fix compiled, not yet run on the GPU).** A scattered layout and a
+`Clear` head need nothing in the matrices: `OnMlx` puts each head's dense `qk` and `ov` on the GPU whatever wrote
+them, and embeds and decodes through `Forward`, which goes by `Layout.ix`. One thing was wrong for a packed
+program: `records` and `last` decoded `Program.fields`, and a packed program's fields include the cleared ones,
+whose coordinates hold a later field by the end — a wrong record or an `Inexact`. They now decode
+`Program.outputs`, the same list when nothing is cleared, so the plain path computes what it did. Added:
+`OnMlx.tapped`, `run` that also returns, for the layers asked, the residual as the layer found it and as its heads
+left it (`run` is `tapped` with no layers: the same operations in the same order).
+
+**The suites** (`mlx/src/test/scala/okay/inlay/gpu/`, cases in `Packed.scala`): 14 programs — `Quotes.window`
+k = 3, `Quotes.cheap` k = 8 and 32 (`OnMlxSuite`'s), `Quotes.cheapBits` (6 words k = 4, 40 words k = 8, 300 words
+k = 16), `Closure` (12 names, 4 rounds: the bridge's block), and the machines `Registers`, `Cek` (1,024 positions),
+`OrParallel` (3 variables, 12 slots), `Dpll` (n = 3, 6, 8, 10; 20 slots). `OnMlx` has no machine runner; a machine
+is checked as one pass over a whole run — the prefix and every state the plain reference fed the step program —
+which a causal program makes the same records as the machine's trace (required of every sequence when it is built).
+- `PackedOnMlxSuite`, float32, asserted: the packed weights on MLX decode to the packed reference at every
+  position; the packed reference equals the plain one on the fields left; every coordinate a clear frees is exactly
+  0 after its layer's heads, at every position (through `tapped`).
+- `PackedHalfSuite`: plain and packed side by side in float32 (asserted), float16 and bfloat16 (measured) —
+  positions exact, wrong, not decodable, the earliest position not exact with its sequence's length, and the
+  cells not 0 after the clears with the largest magnitude left.
+- `PackedTimeSuite`: milliseconds a pass, plain against packed, `Closure` and `Dpll` n = 8; five rounds of 20
+  passes each after 5 unmeasured, a round's median. One run of it will still be one measurement.
+
+**What a CPU run did show** (a temporary main over `Packed.cases` with the tests unforked, so no MLX was loaded; it
+is not committed; its output is `~/work/my/okay-inlay-private/packed-mlx/dry.log`): the 14 cases build with the
+widths of the table above; on every sequence the packed reference equals the plain one on the fields left; one
+pass over each machine run is its trace; `Forward` on each case's shortest sequence equals the packed reference.
+
+**What the zero check does not see** (the same log). Only coordinates freed and not written by a head of the same
+layer can be read after the heads' stage; where a head takes them at once, the clear's zero and the new value are
+one sum, and the decode is the only check. That is most layers of the quotes — `Quotes.cheap` k = 8 and k = 32
+leave 1 coordinate to read (their last clearing layer), `Quotes.window` k = 3 leaves 5 — against 280 for `Closure`
+(25 in layer 1, 51 in each of five more), 24 for `Cek`, 110 for `Dpll` n = 3.
+
+**Expected, to be confirmed or refuted by the run (arithmetic, not measurement).** A causal clear's score is
+128·position. In float16 that passes the largest finite value (65,504) after position 511, so a run longer than
+that — `Cek`'s longest sequence here is 880 positions — should break by the clears alone, where its plain form may
+not. In bfloat16 the integers above 256 are not all representable (an 8-bit mantissa), so the position itself, and
+with it the score, ties between neighbours from there on: the machines' sequences of 100–350 positions are at risk
+past 256. Under 64 positions (the quotes) a clear's scores are exact in both halves, so the packed quotes should
+break where the plain ones do (`latest`) and not earlier. `Closure` is not causal: its clears compare `pos` bits,
+scores of a few hundred — no reason seen for it to break in either half.
+
+**Why it did not run.** One GPU, shared; the rule is three quiet minutes with no other MLX work, then a lock. The
+waiter (`~/work/my/okay-inlay-private/packed-mlx/packedrun.zsh`, its log `wait.log` beside it) waited from 18:25:46
+to 21:25:41 on 2026-11-18 and saw the GPU busy the whole time (another project's `tree1.sh`, `listwise1.sh`,
+`base5.sh` and their JVMs; okay-shop's queue and the fold measurement waiting ahead of it); it gave up, started
+nothing, took no lock. To run it, from `~/work/my/okay-inlay-private/packed-mlx/` (one sbt run, a few minutes; the
+plain suites with it, `HalfSuite` among them — its plain numbers are stage (c)'s above):
+
+```
+S=okay.inlay.gpu; ./packedrun.zsh $(( $(date +%s) + 10800 )) run1 "mlx/testOnly $S.OnMlxSuite $S.HalfSuite \
+$S.BridgeOnMlxSuite $S.PackedOnMlxSuite $S.PackedHalfSuite $S.PackedTimeSuite"
+```
+
+The rows are the lines with `packed-mlx` in `run1.log`. A mismatch in float32 is a finding about `Clear` or the
+layout, not something to tune away.

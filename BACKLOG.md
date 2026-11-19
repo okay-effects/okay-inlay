@@ -108,7 +108,7 @@ compiled algorithm into a pretrained model (https://arxiv.org/abs/2505.10719). S
 Not found: liveness/register allocation in a compiler to weights (Tracr names the lack of reuse itself); a
 compiler ALTA exists and is unread. Ideas 3–7 below are NOT checked against the literature yet.
 
-1. **Liveness** — SPRINT `liveness`.
+1. **Liveness** — SPRINT `liveness`; on the GPU and in half precision: SPRINT `packed-mlx` (run 2026-11-19).
 2. **The product with the encoding**: fewer fields alive (liveness) × fewer coordinates a field (binary codes,
    `HandlersBinary.sc`: 85× fewer neurons). Both exact; measure the product on the same programs.
 3. **A ledger of the margin in the compiler**: half precision, a projection, quantised weights all spend the one

@@ -87,4 +87,26 @@ moves; the mask: 0 guesses against the hints, 0 invented words.
   2%), `Quotes.cheap` k = 32 (435 → 364, 16%), `Dpll` n = 20 (3000 → 2600, 13%). As expected the one-step
   machines gain only from inputs handed over to outputs (0 with the inputs kept). The price: a head in nearly
   every layer (`Dpll` 7 → 15), and dense parameters RISE where the heads dominate (`Dpll` n = 20: 148.7 M →
-  222.5 M). `Horn` not measured (not on `master`). Open: fewer clears; MLX and half precision not run.
+  222.5 M). `Horn` not measured (not on `master`). Open: fewer clears; MLX and half precision — item `packed-mlx` below.
+
+- [x] **packed-mlx** — RUN 2026-11-19 (specs/dsl.md "Liveness on MLX, measured"; rows in
+  `bench/packed-mlx/run1.txt`): float32 holds packed on all 14 programs, cleared cells exactly 0; in the halves
+  `Cek` breaks packed where plain held (float16 from position 1 of its 880-position run, bfloat16 from 257), and
+  the packed quotes and `Dpll` give wrong records in bfloat16; a pass is 0.87–0.96 of plain for `Closure`, 1.18
+  for `Dpll` n = 8. Branch not merged. The item as it was written:
+  (2026-11-18; the operator's "check it on MLX"; specs/dsl.md "Liveness on MLX") — what: the
+  law of a packed layout on the GPU, in float32, float16 and bfloat16, beside the plain layout; whether a cleared
+  coordinate is exactly 0 there; the time of a pass plain against packed. Why: `liveness` checked its law by
+  `Forward` on the CPU only, and a clear's score is 128·position — the size of the term that broke float16.
+  State: WRITTEN, NOT RUN, on branch `packed-mlx` (worktree `../okay-inlay-wt-packed-mlx`, not merged). `OnMlx`
+  decodes `Program.outputs` (it decoded the cleared fields too) and has `tapped`; `Packed.scala` holds 14 cases
+  (the quotes, `cheapBits`, `Closure`, `Registers`, `Cek`, `OrParallel`, `Dpll` n = 3..10), the suites are
+  `PackedOnMlxSuite`, `PackedHalfSuite`, `PackedTimeSuite`. On the CPU the cases build and their references agree.
+  The GPU was busy for the three hours waited (18:25–21:25), nothing was started.
+  Next: from `~/work/my/okay-inlay-private/packed-mlx/` run `packedrun.zsh` with the command in the spec (it waits
+  for three quiet minutes and takes `gpu.lock`); read the `packed-mlx` lines of `run1.log`; write the table
+  program × dtype (holds / first position not exact), the zeros and the times into the spec in place of
+  "written, NOT RUN", and check the spec's expectations (float16 past position 511, bfloat16 past 256) against it.
+  Done when: that table is in the spec, the plain suites (`OnMlxSuite`, `HalfSuite`, `BridgeOnMlxSuite`) pass
+  with `HalfSuite`'s numbers unchanged (768 of 880, 705 of 832), and a float32 mismatch, if any, is recorded as a
+  finding.
