@@ -89,7 +89,12 @@ moves; the mask: 0 guesses against the hints, 0 invented words.
   every layer (`Dpll` 7 → 15), and dense parameters RISE where the heads dominate (`Dpll` n = 20: 148.7 M →
   222.5 M). `Horn` not measured (not on `master`). Open: fewer clears; MLX and half precision — item `packed-mlx` below.
 
-- [ ] **packed-mlx** (2026-11-18; the operator's "check it on MLX"; specs/dsl.md "Liveness on MLX") — what: the
+- [x] **packed-mlx** — RUN 2026-11-19 (specs/dsl.md "Liveness on MLX, measured"; rows in
+  `bench/packed-mlx/run1.txt`): float32 holds packed on all 14 programs, cleared cells exactly 0; in the halves
+  `Cek` breaks packed where plain held (float16 from position 1 of its 880-position run, bfloat16 from 257), and
+  the packed quotes and `Dpll` give wrong records in bfloat16; a pass is 0.87–0.96 of plain for `Closure`, 1.18
+  for `Dpll` n = 8. Branch not merged. The item as it was written:
+  (2026-11-18; the operator's "check it on MLX"; specs/dsl.md "Liveness on MLX") — what: the
   law of a packed layout on the GPU, in float32, float16 and bfloat16, beside the plain layout; whether a cleared
   coordinate is exactly 0 there; the time of a pass plain against packed. Why: `liveness` checked its law by
   `Forward` on the CPU only, and a clear's score is 128·position — the size of the term that broke float16.

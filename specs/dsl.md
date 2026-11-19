@@ -314,9 +314,9 @@ memory, plain weights and packed together.)
    unless the heads are stored sparsely or the clears are fewer.
 
 **Not done, not verified.**
-- The packed weights were run by `Forward` on the CPU only (JVM and Scala.js). On MLX and in half precision the
-  check is WRITTEN AND NOT RUN (2026-11-18, branch `packed-mlx`; "Liveness on MLX" below): the GPU, shared with
-  other sessions, was never free. Not beside a model.
+- The packed weights were run by `Forward` on the CPU (JVM and Scala.js) and, since 2026-11-19, on MLX: the law
+  holds in float32 on 14 programs; in the halves `Cek` breaks packed where it held plain, and the packed quotes
+  and `Dpll` give wrong records in bfloat16 ("Liveness on MLX, measured" below). Not beside a model.
   A clear's score is ε·position, the same size as a `latest` lookup's position term — the one that broke float16.
 - Fewer clears were not tried: a clear is placed in the first layer where a field is dead; placing it in the layer
   where its coordinates are first needed and merging would cut heads at no cost in width. A clear by the MLP (two
@@ -325,7 +325,49 @@ memory, plain weights and packed together.)
 - Nothing else uses the packed layout yet: `Compile(p)`, the bridge, the web page and the MLX benches are as they
   were.
 
-### Liveness on MLX (2026-11-18, branch `packed-mlx`): written, NOT RUN
+### Liveness on MLX, measured (2026-11-19, branch `packed-mlx`)
+
+One run on the GPU, 06:19, the six suites together: 37 tests passed, and the plain path is unchanged (`HalfSuite`
+prints stage (c)'s 768 of 880 in float16 and 705 of 832 in bfloat16). Every row is in `bench/packed-mlx/run1.txt`.
+
+**Float32: the law holds packed, on all 14 programs.** The packed weights on MLX decode to the packed reference at
+every position, and every coordinate a clear frees reads exactly 0 (largest magnitude 0.0), from 698 cells checked
+for `Quotes.cheap` to 197,960 for `Closure`. So a packed layout can be used on MLX in float32 as it is.
+
+**The halves: a packed program is not safer, and it fails in a worse way.**
+
+| program | float16: plain → packed (exact of positions) | bfloat16: plain → packed | wrong, packed (f16 / bf16) |
+| --- | --- | --- | --- |
+| `Quotes.window` k = 3 | 678 → 678 of 678 | 613 → 613 | 0 / 0 |
+| `Quotes.cheap` k = 8 | 597 → 597 of 678 | 566 → 573 | 0 / 48 |
+| `Quotes.cheap` k = 32 | 371 → 371 of 678 | 362 → 369 | 59 / 48 |
+| `Quotes.cheapBits` 300 words | 492 → 581 of 588 | 380 → 489 | 2 / 86 |
+| `Closure` 12 names | 659 → 667 of 667 | 659 → 667 | 0 / 0 |
+| `Registers` | 282 → 282 of 282 | 282 → 282 | 0 / 0 |
+| `Cek` 1,024 positions | 2086 → 1206 of 2086 | 2086 → 1578 | 0 / 0 |
+| `OrParallel` | 35 → 127 of 659 | 35 → 35 | 20 / 11 |
+| `Dpll` n = 8 | 34 → 79 of 314 | 34 → 108 | 45 / 72 |
+
+- `Cek` is the one program whose plain form holds in both halves and whose packed form does not: as expected
+  below, the causal clear's score overflows in float16 (the whole 880-position run is lost from its first
+  position, 21,144 cleared cells not 0, NaN among them) and ties in bfloat16 from position 257 on.
+- Where the plain form already broke, the packed one is exact at as many positions or more (a narrower stream
+  loses less), `Closure` holds packed in both halves where plain loses 8 positions — but in bfloat16 the packed
+  quotes and `Dpll` give WRONG records (25–86) where the plain form gave none or few and was "not decodable":
+  a value left under a clear that did not fully fire is read as a value. A refusal became a wrong answer.
+- So the rule of stage (c) stands and is sharper: these programs run in float32; in a half a packed layout must
+  not be trusted without a check of its own.
+
+**Time of a pass** (one run, five rounds, a round's median): `Closure` 1.11–1.18 ms plain against 1.02–1.08 ms
+packed (width 921 → 199, heads 5 → 16: 0.87–0.96 of plain); `Dpll` n = 8 2.83–2.87 ms against 3.33–3.38 ms (width
+772 → 520, heads 7 → 15: 1.18 of plain). At these sizes the heads cost more than the width saves; packing buys
+width (memory, a narrower stream beside a model), not time.
+
+Not done: the default of `Compile(p)` is unchanged and no caller was moved to a packed layout.
+
+### Liveness on MLX (2026-11-18, branch `packed-mlx`): as written before the run
+
+(Kept as the record of what was expected; "has not run" below was true on 2026-11-18.)
 
 The operator's question: the law of a packed layout was checked by `Forward` on the CPU only — check it on the GPU,
 in float32 and in the halves. The check is written and compiled; it has not run. Nothing below is a result on the
