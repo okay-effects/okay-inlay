@@ -74,10 +74,15 @@ final class Forge(model: Adaptable, chat: Chat):
     val p = prompt(src, t)
     (p ++ tok.encode(s"```scala\n$code\n```") :+ end, p.length)
 
-  /** epochs of AdamW over the examples, shuffled; the mean loss of each */
-  def train(lora: Lora, examples: Vector[(Array[Int], Int)], epochs: Int, seed: Long = 3): Vector[Float] =
+  /** epochs of AdamW over the examples, shuffled; the mean loss of each. `batch` > 1: an epoch in tries (mlx-scala
+   * `Lora.epochTree`: examples sharing a prompt's beginning — a project's sources — run it once a batch); okay-desk's
+   * frame reader at 8: 1.8× faster and half the wrong (okay-desk specs/frames.md §5.12) — not yet measured here */
+  def train(lora: Lora, examples: Vector[(Array[Int], Int)], epochs: Int, seed: Long = 3,
+      batch: Int = 1): Vector[Float] =
     val r = scala.util.Random(seed)
     (1 to epochs).map { _ =>
-      val ls = r.shuffle(examples).map((ids, from) => lora.step(ids, from))
-      ls.sum / ls.size
+      if batch > 1 then lora.epochTree(examples, r, batch)
+      else
+        val ls = r.shuffle(examples).map((ids, from) => lora.step(ids, from))
+        ls.sum / ls.size
     }.toVector
